@@ -31,7 +31,7 @@ The destination remains in the header after landing.
 
 ## Session shuffle modes
 
-Press **m** to cycle the pool used by your *next* Stumble:
+Press **m** (shown in the bottom key strip) to cycle the pool used by your *next* Stumble:
 
 | Mode | Eligible stations |
 | --- | --- |

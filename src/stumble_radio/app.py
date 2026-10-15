@@ -52,11 +52,11 @@ class StumbleRadio(App):
     BINDINGS: ClassVar = [
         Binding("s", "stumble", "Stumble"),
         Binding("t", "teleport", "Teleport"),
+        Binding("m", "pool", "Shuffle"),
         Binding("slash", "journal", "Journal"),
         Binding("l", "last_play", "Last Play"),
         Binding("ctrl+l", "last_play", "Last Play", show=False, priority=True),
         Binding("ctrl+f", "search", "Search", show=False),
-        Binding("m", "pool", "Shuffle", show=False),
         Binding("ctrl+g", "settings", "Settings", show=False),
         Binding("ctrl+o", "podmoro", "Podmoro", show=False),
         Binding("space", "pause", "Pause"),
