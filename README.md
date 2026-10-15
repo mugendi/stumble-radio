@@ -1,5 +1,11 @@
 # Stumble Radio
 
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Built with Textual](https://img.shields.io/badge/TUI-Textual-7C3AED)](https://textual.textualize.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/mugendi/stumble-radio?style=flat)](https://github.com/mugendi/stumble-radio/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/mugendi/stumble-radio?style=flat)](https://github.com/mugendi/stumble-radio/issues)
+
 ![Stumble Radio terminal player with station browser, favourites and playback controls](docs/images/player.png)
 
 *The actual TUI, shown with demonstration stations and listening data.*
@@ -141,5 +147,14 @@ Open a new terminal if needed. Press **s** to Stumble, **t** to Teleport,
 [Installation, audio dependencies and first launch](docs/getting-started.md) ·
 [Troubleshooting](docs/troubleshooting.md) ·
 [Development](docs/development.md)
+
+## Contributing
+
+Bug reports, ideas, and pull requests are welcome. For local setup, project
+structure, and development checks, see the [development guide](docs/development.md).
+
+## License
+
+Stumble Radio is available under the [MIT License](LICENSE).
 
 Station directory provided by the [Radio Browser community](https://www.radio-browser.info/).

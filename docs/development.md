@@ -43,7 +43,7 @@ tests/         Database, API, player, and headless TUI checks
 
 ## API and implementation references
 
-The project follows the supplied [API query reference](../radio-browser-api-queries.md).
+The project follows the supplied [API query reference](radio-browser-api-queries.md).
 The directory is provided by the [Radio Browser community](https://www.radio-browser.info/).
 Technical references: [Radio Browser API](https://api.radio-browser.info/),
 [Textual workers](https://textual.textualize.io/guide/workers/),
