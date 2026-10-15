@@ -41,7 +41,7 @@ class StumbleRadio(App):
     TITLE = "Stumble Radio"
     CSS_PATH = "app.tcss"
     TABLE_COLUMNS: ClassVar = (
-        ("favourite", "★"),
+        ("favourite", "Now / ★"),
         ("name", "Station"),
         ("country", "Country"),
         ("tags", "Genre / format"),
@@ -97,6 +97,7 @@ class StumbleRadio(App):
         self.offset = 0
         self.favourites: set[str] = set()
         self.current: Station | None = None
+        self.pin_current_pending = False
         self.play_state = "READY"
         self.media_title = ""
         self.volume_value = 65
@@ -385,14 +386,26 @@ class StumbleRadio(App):
         count = await asyncio.to_thread(self.db.count)
         if (filters, mode, offset) != (self.filters, self.mode, self.offset):
             return
-        old_station = self.selected_station()
-        old_id = old_station.stationuuid if old_station else None
-        self.stations, self.total, self.favourites = stations, total, favourites
-        self.catalogue_count = count
         if not stations and total and offset:
             self.offset = max(0, ((total - 1) // PAGE_SIZE) * PAGE_SIZE)
             self.load_library()
             return
+        old_station = self.selected_station()
+        old_id = old_station.stationuuid if old_station else None
+        if self.current:
+            current_index = next(
+                (
+                    i
+                    for i, station in enumerate(stations)
+                    if self.is_playing_station(station)
+                ),
+                None,
+            )
+            if current_index is not None:
+                stations.pop(current_index)
+            stations.insert(0, self.current)
+        self.stations, self.total, self.favourites = stations, total, favourites
+        self.catalogue_count = count
         table = self.query_one(DataTable)
         for column, (_, label) in zip(table.columns.values(), self.TABLE_COLUMNS):
             arrow = (
@@ -401,8 +414,15 @@ class StumbleRadio(App):
             column.label = Text(f"{label} {arrow}")
         table.clear()
         for station in stations:
+            playing = self.is_playing_station(station)
+            favourite = station.stationuuid in favourites
+            marker = Text("▶" if playing else "★" if favourite else "·")
+            if playing:
+                marker.stylize("bold #68ddc4")
+            if playing and favourite:
+                marker.append(" ★", style="bold #eebc78")
             table.add_row(
-                "★" if station.stationuuid in favourites else "·",
+                marker,
                 Text(station.name[:55]),
                 Text(station.country[:24]),
                 Text(station.tags[:36]),
@@ -411,7 +431,10 @@ class StumbleRadio(App):
                 str(station.clickcount),
                 key=station.stationuuid,
             )
-        if old_id:
+        if self.current and stations and self.pin_current_pending:
+            table.move_cursor(row=0)
+            self.pin_current_pending = False
+        elif old_id:
             for index, station in enumerate(stations):
                 if station.stationuuid == old_id or (
                     old_station.url and station.url == old_station.url
@@ -439,6 +462,15 @@ class StumbleRadio(App):
         self.update_details()
         self.update_status()
 
+    def is_playing_station(self, station: Station) -> bool:
+        return bool(
+            self.current
+            and (
+                station.stationuuid == self.current.stationuuid
+                or (self.current.url and station.url == self.current.url)
+            )
+        )
+
     def selected_station(self) -> Station | None:
         table = self.query_one(DataTable)
         if table.row_count and table.cursor_row < len(self.stations):
@@ -447,13 +479,14 @@ class StumbleRadio(App):
 
     def update_details(self) -> None:
         if station := self.selected_station():
+            label = "▶ Now playing · " if self.is_playing_station(station) else ""
             self.query_one("#detail", Static).update(
                 f"{station.name}\n\n{station.country or 'Unknown country'}\n"
                 f"{station.state}\n\n{station.tags or 'Uncategorised'}\n\n"
                 f"{station.language or 'Language unspecified'}\n"
                 f"{station.codec} · {station.bitrate or '?'} kbps\n\n"
                 f"{station.votes:,} votes\n{station.clickcount:,} plays (24h)\n\n"
-                f"{'★ Favourite' if station.stationuuid in self.favourites else 'f · Add to favourites'}"
+                f"{label}{'★ Favourite' if station.stationuuid in self.favourites else 'f · Add to favourites'}"
             )
         else:
             self.query_one("#detail", Static).update(
@@ -969,6 +1002,8 @@ class StumbleRadio(App):
                 self.recovery_attempts = 0
                 self.failed_ids.clear()
             self.current = station
+            self.pin_current_pending = True
+            self.load_library()
             self.user_paused = False
             try:
                 await self.load_stream(station)

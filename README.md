@@ -40,6 +40,7 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 [Playback, recording, sleep and keyboard controls →](docs/playback.md)
 
 ### Discover somewhere new
+This is probably my most favorite feature. I start the radio, **teleport** to a random place and then **stumble** upon amazing stations that I end up adding to my favorites. It is truly interesting.
 
 - **Stumble:** random radio that learns from quick skips and longer listens.
 - **Teleport:** spin through country names, land somewhere, and listen there.
@@ -61,6 +62,8 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 ### Keep your own dial
 
 - Save favourites and browse Explore, Favourites, History, or Unheard.
+- Keep the currently playing station pinned above results with a clear ▶ marker,
+  ready to favourite with **f**.
 - Open a compact, searchable Quick tune picker.
 - Browse a local SQLite catalogue, quietly updated in the background.
 - See one row per identical stream URL, keeping your favourites and history intact.

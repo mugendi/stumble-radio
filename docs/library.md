@@ -15,6 +15,13 @@ highlighted row, which can differ from the playing station. Matching favourites
 appear first in station lists, including search results. Sorting the ★ column
 explicitly lets you put them last instead.
 
+The station you are listening to stays pinned at the top of the table, above
+favourites and filtered results. A **▶** marker identifies it; **★** beside the
+marker means it is already a favourite. When playback changes, the table selects
+that row so you can press **f** to favourite a station found by Stumble or
+Teleport. The pin can sit outside the active search and is excluded from result
+counts and page sorting.
+
 Use the sidebar dropdown or the **Library** button to choose:
 
 | Library | What it shows |
