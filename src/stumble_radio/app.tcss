@@ -1,0 +1,100 @@
+Screen { background: #10161e; color: #dfe7ef; }
+#masthead { height: 5; padding: 1 2 0 2; }
+#logo { width: 24; height: 3; color: #68ddc4; text-align: center; text-style: bold; }
+#tagline { width: 1fr; height: 3; padding: 0 2; color: #8a9bac; content-align: right middle; }
+#transport { height: auto; min-height: 3; padding: 0 2; margin-bottom: 1; }
+#transport .media-control { width: 6; min-width: 6; padding: 0; text-style: bold; }
+#transport-primary { width: auto; height: 3; }
+#transport-extra { width: 1fr; height: 3; }
+#transport-extra .transport-spacer { width: 1fr; height: 3; }
+#podmoro-line { height: 1; margin: 0 2 1 2; color: #eebc78; }
+#discovery-line { height: 1; margin: 0 2 1 2; color: #68ddc4; }
+Button { min-width: 9; margin: 0 1 0 0; border: tall #283748; background: #1a2633; }
+Button:hover { background: #263b4c; }
+Button.-primary { color: #10161e; background: #68ddc4; border: tall #68ddc4; text-style: bold; }
+Button.-primary:hover { background: #98eedb; }
+#body { height: 1fr; padding: 0 2; }
+#sidebar { width: 28; padding: 1 1 0 0; }
+.eyebrow { color: #68ddc4; text-style: bold; height: 2; }
+#library { margin-bottom: 1; }
+#detail { height: 1fr; color: #aab9c8; overflow-y: auto; }
+#timer { height: 2; color: #eebc78; }
+#browser { width: 1fr; }
+#search-toolbar { height: 3; margin-bottom: 1; }
+#quick-search { height: 3; width: 1fr; }
+#clear-filters { width: 11; min-width: 11; padding: 0; margin: 0 0 0 1; }
+#active-filters { height: auto; color: #eebc78; margin-bottom: 1; }
+#query-error { height: auto; color: #f49d9d; margin-bottom: 1; }
+#list-heading { height: 2; color: #8a9bac; }
+#stations { height: 1fr; background: #10161e; border: none; }
+DataTable > .datatable--header { background: #1a2633; color: #9aaec1; text-style: bold; }
+DataTable > .datatable--cursor { background: #24493f; color: #effff9; }
+DataTable > .datatable--odd-row { background: #141e28; }
+#page-controls { height: 3; }
+#page-label { width: 1fr; content-align: left middle; color: #8a9bac; }
+#now-playing { height: 4; padding: 1 3 0 3; background: #1a2633; border-top: solid #304052; }
+#status { height: 1; padding: 0 3; color: #8a9bac; background: #1a2633; }
+Footer { background: #10161e; }
+Footer > .footer--key { background: #263b4c; color: #68ddc4; }
+Input { background: #141e28; border: tall #283748; }
+Input:focus { border: tall #68ddc4; }
+Select { height: 3; }
+ModalScreen { align: center middle; background: #000000 65%; }
+#search-dialog { width: 76; max-width: 95%; height: 90%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+.dialog-title { height: 2; text-style: bold; color: #68ddc4; }
+.muted { height: auto; color: #8a9bac; margin-bottom: 1; }
+#search-fields { height: 1fr; }
+#filter-grid { layout: grid; grid-size: 2; grid-columns: 23 1fr; grid-rows: 3; height: auto; }
+#filter-grid Label { content-align: left middle; height: 3; }
+#search-error { height: auto; color: #f49d9d; }
+.dialog-actions { height: 3; margin-top: 1; }
+#picker-dialog { width: 72; max-width: 95%; height: 70%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#picker-options { height: 1fr; margin: 1 0; background: #10161e; }
+#help-dialog { width: 76; max-width: 95%; height: auto; max-height: 95%; overflow-y: auto; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#help-dialog Static { height: auto; margin-bottom: 1; }
+#settings-dialog, #journal-dialog { width: 88; max-width: 95%; height: 85%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#settings-dialog Label { height: auto; }
+#settings-dialog Input { margin-bottom: 1; }
+#settings-error, #sleep-error { height: auto; color: #f49d9d; }
+#sleep-dialog { width: 72; max-width: 95%; height: auto; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#sleep-dialog Label { height: auto; margin-bottom: 1; }
+#sleep-dialog Input { margin-bottom: 1; }
+#journal-dialog Static { height: auto; margin-bottom: 1; }
+#last-play-dialog { width: 120; max-width: 95%; height: 85%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#last-play-results { height: 1fr; background: #10161e; }
+#last-play-status { height: auto; color: #8a9bac; margin-top: 1; }
+.journal-heading { height: 2; margin-top: 1; color: #68ddc4; text-style: bold; }
+#pomodoro-dialog { width: 104; max-width: 95%; height: 94%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#pomodoro-dialog TabbedContent, #pomodoro-dialog ContentSwitcher { height: 1fr; }
+#pomodoro-dialog TabPane { height: 1fr; padding: 0; }
+#pomodoro-dialog VerticalScroll { height: 1fr; }
+#pomodoro-dialog Button { min-width: 0; width: 1fr; margin: 0; padding: 0 1; }
+#pomodoro-dialog Label { height: auto; }
+#pomo-live { height: auto; min-height: 3; margin-bottom: 1; }
+.pomo-actions { grid-size: 3; grid-columns: 1fr 1fr 1fr; grid-rows: 3; grid-gutter: 0 1; height: auto; margin: 1 0; }
+#pomo-session-actions { grid-size: 4; grid-columns: 1fr 1fr 1fr 1fr; margin: 0; }
+.pomo-fields { grid-size: 2; grid-columns: 26 1fr; grid-rows: 3; height: auto; }
+.pomo-fields Label { height: 3; content-align: left middle; }
+.pomo-section { height: 2; margin-top: 1; color: #68ddc4; }
+#pomo-reminders, #pomo-clips-table { height: 8; min-height: 4; background: #10161e; margin: 1 0; }
+#pomo-feedback { height: auto; max-height: 3; color: #eebc78; margin: 0; }
+#pomo-close { height: 3; }
+.narrow #sidebar { display: none; }
+.narrow #masthead { height: 2; padding-top: 0; }
+.narrow #discovery-line, .narrow #podmoro-line { margin: 0 1; }
+.narrow #pomo-session-hint { display: none; }
+.narrow #pomo-live { margin-bottom: 0; }
+.narrow #logo { height: 2; }
+.narrow #search-toolbar { margin-bottom: 0; }
+.narrow #active-filters { margin-bottom: 0; }
+.narrow #query-error { margin-bottom: 0; }
+.narrow #list-heading { height: 1; }
+.narrow #body { padding: 0 1; }
+.narrow #transport { padding: 0 1; layout: vertical; height: 6; margin-bottom: 0; }
+.narrow #transport-extra { width: 1fr; }
+.narrow .pomo-fields { grid-columns: 22 1fr; }
+.narrow #transport Button { min-width: 6; margin-right: 0; padding: 0 1; }
+.narrow #transport Button.media-control { padding: 0; }
+.narrow #tagline { display: none; }
+.narrow #now-playing { padding: 0 1; height: 3; }
+.narrow #status { padding: 0 1; }
