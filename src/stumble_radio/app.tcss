@@ -7,6 +7,7 @@ Screen { background: #10161e; color: #dfe7ef; }
 #transport-primary { width: auto; height: 3; }
 #transport-extra { width: 1fr; height: 3; }
 #transport-extra .transport-spacer { width: 1fr; height: 3; }
+#audio-meter { color: #68ddc4; content-align: center middle; }
 #podmoro-line { height: 1; margin: 0 2 1 2; color: #eebc78; }
 #discovery-line { height: 1; margin: 0 2 1 2; color: #68ddc4; }
 Button { min-width: 9; margin: 0 1 0 0; border: tall #283748; background: #1a2633; }

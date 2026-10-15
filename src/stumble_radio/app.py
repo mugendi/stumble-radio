@@ -129,6 +129,7 @@ class StumbleRadio(App):
         self.fade_volume = None
         self.listening_lock = asyncio.Lock()
         self.signal_silent = False
+        self.audio_levels: list[float] = []
         self.user_paused = False
         self.query_error = ""
         self.track_metadata = None
@@ -173,7 +174,7 @@ class StumbleRadio(App):
                     tooltip="Search songs and artists heard (l / Ctrl+L)",
                 )
             with HorizontalGroup(id="transport-extra"):
-                yield Static("", classes="transport-spacer", markup=False)
+                yield Static("", id="audio-meter", classes="transport-spacer", markup=False)
                 yield Button(
                     "PODMORO", id="podmoro", tooltip="Focus scheduler and voice reminders (Ctrl+O)"
                 )
@@ -253,6 +254,7 @@ class StumbleRadio(App):
         self.pomodoro.tick(time.monotonic(), datetime.now().astimezone())
         self.update_pomodoro_line()
         self.set_interval(1, self.tick)
+        self.set_interval(0.1, self.sample_audio_meter)
         self.set_interval(3600, self.prune_track_history)
         self.consume_player_events()
         if not self.offline:
@@ -1414,6 +1416,7 @@ class StumbleRadio(App):
     async def tick(self) -> None:
         if not self.is_running:
             return
+        self.update_audio_meter()
         self.account_listening()
         now = time.monotonic()
         if now - self.last_checkpoint >= 5:
@@ -1489,6 +1492,44 @@ class StumbleRadio(App):
         ):
             await self.persist_pomodoro()
         self.update_status()
+
+    def update_audio_meter(self) -> None:
+        meter = self.query_one("#audio-meter", Static)
+        if self.size.width < 95 or not self.current or self.play_state != "PLAYING":
+            meter.update("")
+            return
+        bars = "▁▂▃▄▅▆▇█"
+        sample_count = max(0, min(24, meter.size.width - 2))
+        graph = (
+            "".join(
+                bars[min(7, int(level * 8))] for level in self.audio_levels[-sample_count:]
+            )
+            if sample_count
+            else ""
+        )
+        meter.update("♪ " + graph)
+
+    @work(group="audio-meter", exclusive=True)
+    async def sample_audio_meter(self) -> None:
+        if self.size.width < 95 or not self.current or self.play_state != "PLAYING":
+            self.audio_levels.clear()
+            self.update_audio_meter()
+            return
+        station_id = self.current.stationuuid
+        try:
+            rms = await self.player.audio_level()
+        except PlayerError:
+            return
+        if (
+            rms is None
+            or not self.current
+            or self.current.stationuuid != station_id
+            or self.play_state != "PLAYING"
+        ):
+            return
+        self.audio_levels.append(max(0.0, min(1.0, (rms + 60) / 60)))
+        del self.audio_levels[:-24]
+        self.update_audio_meter()
 
     async def on_unmount(self) -> None:
         self.playback_wanted = self.automatic = False

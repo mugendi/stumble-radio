@@ -161,13 +161,16 @@ class Player:
 
     async def health(self) -> tuple[float | None, float | None]:
         position = await self.command("get_property", "time-pos")
+        return position, await self.audio_level()
+
+    async def audio_level(self) -> float | None:
         try:
             metadata = await self.command("get_property", "af-metadata/stumble_meter")
             level = (metadata or {}).get("lavfi.astats.Overall.RMS_level")
             rms = float(level) if level is not None else None
         except (PlayerError, ValueError, TypeError):
             rms = None
-        return position, rms
+        return rms
 
     async def stop(self) -> Path | None:
         saved = await self.stop_recording()
