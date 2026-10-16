@@ -56,7 +56,7 @@ class EqualizerSettings:
             for hz, gain in zip(BAND_FREQUENCIES, self.bands)
         )
         if self.auto_level:
-            filters.extend(("ebur128=metadata=1:framelog=quiet", "volume@stumble_auto=-12dB:precision=float"))
+            filters.extend(("ebur128=metadata=1:framelog=quiet", "volume@stumble_auto=0dB:precision=float"))
         else:
             filters.append(f"volume={self.gain_db}dB:precision=float")
         filters.append("alimiter=limit=0.891250938:level=false:latency=true")

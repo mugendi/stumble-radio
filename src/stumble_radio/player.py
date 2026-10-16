@@ -120,7 +120,7 @@ class Player:
 
     def _reset_auto_level(self) -> None:
         self.auto_level_target_lufs = BASE_TARGET_LUFS + self.equalizer.gain_db
-        self.auto_level_correction_db = -12.0 if self.equalizer.auto_level else 0.0
+        self.auto_level_correction_db = 0.0
         self.auto_level_started_at = time.monotonic()
         self.auto_level_last_update = self.auto_level_started_at
         self.auto_level_last_position = None
