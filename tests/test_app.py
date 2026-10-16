@@ -6,6 +6,7 @@ import pytest
 from textual.widgets import Button, DataTable, Input, Select, Static
 
 from stumble_radio.app import StumbleRadio, restore_volume
+from stumble_radio.db import PAGE_SIZE
 from stumble_radio.discovery import POOL_MODES, DiscoverySettings
 from stumble_radio.equalizer import EqualizerSettings
 from stumble_radio.models import Search
@@ -194,6 +195,41 @@ async def test_next_station_matches_playing_url_when_representative_changes(db, 
         app.action_next_station()
         await pilot.pause()
         assert player.station.stationuuid == "two"
+
+
+async def test_tuning_keeps_station_in_place_and_pins_it_above_table(db, station, tmp_path):
+    db.upsert([
+        replace(
+            station,
+            stationuuid=f"extra-{i}",
+            name=f"Station {i:03}",
+            url=f"https://example.test/{i}",
+            votes=1000 - i,
+        )
+        for i in range(PAGE_SIZE + 5)
+    ])
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        table = app.query_one(DataTable)
+        row = PAGE_SIZE - 1
+        station_to_play = app.stations[row]
+        table.move_cursor(row=row)
+        app.manual_tune(station_to_play)
+        await pilot.pause()
+
+        assert app.stations[row].stationuuid == station_to_play.stationuuid
+        assert table.cursor_row == row
+        assert app.offset == 0
+        assert app.stations[0].stationuuid != station_to_play.stationuuid
+        pinned = app.query_one("#playing-station", Static)
+        assert pinned.display and station_to_play.name in str(pinned.render())
+
+        app.offset = PAGE_SIZE
+        await app.refresh_library()
+        assert app.offset == PAGE_SIZE
+        assert station_to_play.stationuuid not in {s.stationuuid for s in app.stations}
+        assert station_to_play.name in str(pinned.render())
 
 
 async def test_keyboard_flow_and_dialogs(db, tmp_path):

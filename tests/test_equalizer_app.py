@@ -97,7 +97,7 @@ async def test_automatic_leveling_setting_persists_and_reports_on_status(db, tmp
         player.auto_level_correction_db = 4.2
         app.play_state = "PLAYING"
         app.update_status()
-        status = str(app.query_one("#status", Static).content)
+        status = str(app.query_one("#status-line", Static).content)
         assert "Auto +4.2 dB" in status
         assert "−17 LUFS" in status
         assert len(status) <= width

@@ -133,9 +133,10 @@ class StumbleRadio(App):
         self.favourites: set[str] = set()
         self.current: Station | None = None
         self.notes_hint_count = 0
-        self.pin_current_pending = False
         self.play_state = "READY"
         self.media_title = ""
+        self.status_line = ""
+        self.page_summary = "0–0 of 0"
         self.volume_value = 65
         self.catalogue_count = 0
         self.sync_state = "Offline directory" if offline else "Directory starting…"
@@ -233,7 +234,6 @@ class StumbleRadio(App):
                     allow_blank=False,
                     id="library",
                 )
-                yield Static("ON THIS FREQUENCY", classes="eyebrow")
                 yield Static("Select a station to see its details.", id="detail", markup=False)
                 yield Static("Sleep timer · off", id="timer")
                 yield Button("Quick tune", id="picker")
@@ -246,22 +246,18 @@ class StumbleRadio(App):
                     yield Button("× Clear", id="clear-filters", disabled=True)
                 yield Static("", id="active-filters", markup=False)
                 yield Static("", id="query-error", markup=False)
-                yield Static(
-                    "Explore · building your station library", id="list-heading", markup=False
-                )
+                with Horizontal(id="table-toolbar"):
+                    with Vertical(id="station-info"):
+                        yield Static("", id="playing-station", markup=False)
+                        yield Static("", id="status-line", markup=False)
+                    with Horizontal(id="table-actions"):
+                        yield Button("‹ Page", id="page-back")
+                        yield Button("Page ›", id="page-next")
+                        yield Button("Online ↻", id="online")
+                        yield Button("Library", id="cycle-library")
                 yield StationTable(
                     id="stations", cursor_type="row", zebra_stripes=True,
                 )
-                with Horizontal(id="page-controls"):
-                    yield Static("", id="page-label", markup=False)
-                    yield Button("‹ Page", id="page-back")
-                    yield Button("Page ›", id="page-next")
-                    yield Button("Online ↻", id="online")
-                    yield Button("Library", id="cycle-library")
-        yield Static(
-            "READY  ·  s Stumble · t Teleport · Ctrl+F Search", id="now-playing", markup=False
-        )
-        yield Static("", id="status", markup=False)
         yield Footer()
 
     async def on_mount(self) -> None:
@@ -337,6 +333,7 @@ class StumbleRadio(App):
 
     async def catalogue_progress(self) -> None:
         self.catalogue_count = await asyncio.to_thread(self.db.count)
+        self.update_discovery_line()
         self.update_status()
         if not self.stations:
             await self.refresh_library()
@@ -348,8 +345,7 @@ class StumbleRadio(App):
         if self.sleep_until:
             seconds = max(0, int(self.sleep_until - time.monotonic()))
             timer = f" · sleep {seconds // 60:02}:{seconds % 60:02}"
-        left = f"{self.catalogue_count:,} cached · {self.connection_state or self.sync_state}"
-        suffix = f" · vol {self.volume_value:.0f}%{timer}"
+        suffix = f"vol {self.volume_value:.0f}%{timer}"
         level_text = "Auto off"
         settings = self.player.equalizer
         if settings.auto_level and not settings.enabled:
@@ -372,12 +368,8 @@ class StumbleRadio(App):
                 else:
                     text = f"Auto {labels.get(state, state)} · {correction} · {target}"
             level_text = text
-        suffix += " · " + level_text
-        # Keep volume, sleep, and leveling feedback visible by shortening directory status first.
-        available = max(18, self.size.width - 6)
-        if len(left) + len(suffix) > available:
-            left = left[:max(1, available - len(suffix) - 1)].rstrip() + "…"
-        self.query_one("#status", Static).update(left + suffix)
+        self.status_line = f"{suffix} · {level_text}  {self.page_summary}"
+        self.query_one("#status-line", Static).update(self.status_line)
 
     async def update_automatic_level(self) -> None:
         if self.play_state == "PLAYING":
@@ -386,7 +378,7 @@ class StumbleRadio(App):
 
     def update_discovery_line(self):
         self.query_one("#discovery-line", Static).update(
-            f"Shuffle · {self.pool}"
+            f"{self.catalogue_count:,} stations cached | Shuffle · {self.pool}"
         )
 
     def update_destination_line(self, flight: str = ""):
@@ -491,20 +483,9 @@ class StumbleRadio(App):
             return
         old_station = self.selected_station()
         old_id = old_station.stationuuid if old_station else None
-        if self.current:
-            current_index = next(
-                (
-                    i
-                    for i, station in enumerate(stations)
-                    if self.is_playing_station(station)
-                ),
-                None,
-            )
-            if current_index is not None:
-                stations.pop(current_index)
-            stations.insert(0, self.current)
         self.stations, self.total, self.favourites = stations, total, favourites
         self.catalogue_count = count
+        self.update_discovery_line()
         table = self.query_one(DataTable)
         for column, (_, label) in zip(table.columns.values(), self.TABLE_COLUMNS):
             arrow = (
@@ -530,29 +511,18 @@ class StumbleRadio(App):
                 str(station.clickcount),
                 key=station.stationuuid,
             )
-        if self.current and stations and self.pin_current_pending:
-            table.move_cursor(row=0)
-            self.pin_current_pending = False
-        elif old_id:
+        if old_id:
             for index, station in enumerate(stations):
                 if station.stationuuid == old_id or (
                     old_station.url and station.url == old_station.url
                 ):
                     table.move_cursor(row=index)
                     break
-        title = {
-            "browse": "Explore",
-            "favourites": "Favourites",
-            "history": "History",
-            "unheard": "Unheard",
-        }[mode]
-        active = [v for v in (filters.country, filters.state, filters.language, filters.tags) if v]
-        self.query_one("#list-heading", Static).update(
-            f"{title}  /  {total:,} stations" + ("  ·  " + " · ".join(active) if active else "")
-        )
         start, end = (offset + 1 if total else 0), min(offset + PAGE_SIZE, total)
         empty = "No matches. Change filters or try Online ↻." if not total else ""
-        self.query_one("#page-label", Static).update(f"{start:,}–{end:,} of {total:,}   {empty}")
+        self.page_summary = f"{start:,}–{end:,} of {total:,}"
+        if empty:
+            self.page_summary += f" · {empty}"
         self.query_one("#page-back", Button).disabled = not offset
         self.query_one("#page-next", Button).disabled = offset + PAGE_SIZE >= total
         self.query_one("#online", Button).disabled = (
@@ -591,6 +561,16 @@ class StumbleRadio(App):
             self.query_one("#detail", Static).update(
                 "Your next favourite is out there.\n\nPress s to stumble or / to explore."
             )
+
+    def update_pinned_station(self) -> None:
+        pinned = self.query_one("#playing-station", Static)
+        if self.current:
+            country = f" · {self.current.country}" if self.current.country else ""
+            pinned.update(f"▶ NOW PLAYING · {self.current.name[:48]}{country}")
+            pinned.display = True
+        else:
+            pinned.update("")
+            pinned.display = False
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if self.is_running and event.data_table.id == "stations":
@@ -768,11 +748,11 @@ class StumbleRadio(App):
         if session:
             seconds = max(0, int(session["remaining"]))
             block = session["completed"] + (1 if session["phase"] == "focus" else 0)
-            text = f"│ PODMORO · {PHASES[session['phase']]} {seconds // 60:02}:{seconds % 60:02} · #{block}"
+            text = f"PODMORO · {PHASES[session['phase']]} {seconds // 60:02}:{seconds % 60:02} · #{block}"
             if session["paused"]:
                 text += " · paused"
         else:
-            text = "│ PODMORO · off"
+            text = "PODMORO · off"
         if self.pomodoro.quiet:
             text += " · quiet"
         self.query_one("#podmoro-line", Static).update(text)
@@ -1132,7 +1112,7 @@ class StumbleRadio(App):
                 if self.notes_hint_count > 3:
                     self.query_one(StationTable).tooltip = None
             self.current = station
-            self.pin_current_pending = True
+            self.update_pinned_station()
             self.load_library()
             self.user_paused = False
             try:
@@ -1290,12 +1270,6 @@ class StumbleRadio(App):
         pause_button.label = "⏸" if can_pause else "▶"
         pause_button.tooltip = "Pause (Space)" if can_pause else "Play (Space)"
         station = station or self.current
-        recording = "  ● REC" if self.player.record_process else ""
-        name = station.name if station else "Choose a station. Press s to stumble."
-        meta = self.media_title if station else ""
-        self.query_one("#now-playing", Static).update(
-            f"{self.play_state}{recording}  /  {name}\n{meta}"
-        )
         self.query_one("#record", Button).label = (
             "Stop rec" if self.player.record_process else "Record"
         )
