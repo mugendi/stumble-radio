@@ -461,6 +461,16 @@ class Database:
                 ).fetchall()
             }
 
+    def listen_seconds_for(self, station: Station) -> float:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT sum(b.listened_seconds) FROM stations s "
+                "LEFT JOIN affinity b USING(stationuuid) "
+                "WHERE s.stationuuid=? OR (s.url!='' AND s.url=?)",
+                (station.stationuuid, station.url),
+            ).fetchone()
+        return row[0] or 0.0
+
     def toggle_favourite(self, station: Station) -> bool:
         self.upsert([station], reactivate=False)
         with self.connect() as db:

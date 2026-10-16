@@ -69,6 +69,28 @@ def listen_label(seconds: float) -> str:
     return f"{hours // 1000 or 1}k hrs"
 
 
+def excerpt(text: str, limit: int = 96) -> str:
+    """Collapse whitespace and trim to a sidebar-sized single line."""
+    compact = " ".join(text.split())
+    return compact if len(compact) <= limit else compact[: limit - 1].rstrip() + "…"
+
+
+BLOCK_STEPS = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
+
+
+def waveform_graph(levels: list[float], columns: int) -> str:
+    """Scrolling bar wave: interpolate midpoints so columns read as a flowing wave."""
+    if not levels or columns <= 0:
+        return ""
+    points = []
+    for index, value in enumerate(levels):
+        points.append(value)
+        if index + 1 < len(levels):
+            points.append((value + levels[index + 1]) / 2)
+    points = points[-columns:]
+    return "".join(BLOCK_STEPS[min(8, max(0, round(point * 8)))] for point in points)
+
+
 class StationTable(DataTable):
     class Resized(Message):
         pass
@@ -658,15 +680,28 @@ class StumbleRadio(App):
 
     def update_details(self) -> None:
         if station := self.selected_station():
-            label = "▶ Now playing · " if self.is_playing_station(station) else ""
-            self.query_one("#detail", Static).update(
-                f"{station.name}\n\n{station.country or 'Unknown country'}\n"
-                f"{station.state}\n\n{station.tags or 'Uncategorised'}\n\n"
-                f"{station.language or 'Language unspecified'}\n"
-                f"{station.codec} · {station.bitrate or '?'} kbps\n\n"
-                f"{station.votes:,} votes\n{station.clickcount:,} plays (24h)\n\n"
-                f"{label}{'★ Favourite' if station.stationuuid in self.favourites else 'f · Add to favourites'}"
+            seconds = self.db.listen_seconds_for(station)
+            notes = self.db.station_notes(station)
+            lines = [f"STATION: {station.name}"]
+            if self.is_playing_station(station):
+                lines.append("▶ NOW PLAYING")
+            lines.append(f"COUNTRY: {station.country or 'Unknown'}")
+            if station.state:
+                lines.append(f"STATE: {station.state}")
+            lines.append(f"GENRE: {station.tags or 'Uncategorised'}")
+            if station.language:
+                lines.append(f"LANGUAGE: {station.language}")
+            lines.append(f"FORMAT: {station.codec} · {station.bitrate or '?'} kbps")
+            lines.append(f"VOTES: {station.votes:,}")
+            lines.append(f"PLAYS (24h): {station.clickcount:,}")
+            lines.append(f"PLAYTIME: {listen_label(seconds) if seconds else 'Never played'}")
+            lines.append(
+                "★ Favourite" if station.stationuuid in self.favourites else "f · Favourite"
             )
+            lines.append(f"NOTES: {excerpt(notes['notes']) if notes['notes'] else 'none yet · press i'}")
+            if notes["tags"]:
+                lines.append(f"TAGS: {excerpt(notes['tags'])}")
+            self.query_one("#detail", Static).update("\n".join(lines))
         else:
             self.query_one("#detail", Static).update(
                 "Your next favourite is out there.\n\nPress s to stumble or / to explore."
@@ -1744,19 +1779,14 @@ class StumbleRadio(App):
         if not self.is_running:
             return
         meter = self.query_one("#audio-meter", Static)
-        if self.size.width < 95 or not self.current or self.play_state != "PLAYING":
+        if (
+            self.size.width < 95 or not self.current
+            or self.play_state != "PLAYING" or meter.size.width < 6
+        ):
             meter.update("")
             return
-        bars = "▁▂▃▄▅▆▇█"
-        sample_count = max(0, min(24, meter.size.width - 2))
-        graph = (
-            "".join(
-                bars[min(7, int(level * 8))] for level in self.audio_levels[-sample_count:]
-            )
-            if sample_count
-            else ""
-        )
-        meter.update("♪ " + graph)
+        graph = waveform_graph(self.audio_levels, min(meter.size.width - 3, 48))
+        meter.update(("♪ " + graph) if graph else "")
 
     @work(group="audio-meter", exclusive=True)
     async def sample_audio_meter(self) -> None:
@@ -1776,8 +1806,11 @@ class StumbleRadio(App):
             or self.play_state != "PLAYING"
         ):
             return
-        self.audio_levels.append(max(0.0, min(1.0, (rms + 60) / 60)))
-        del self.audio_levels[:-24]
+        level = max(0.0, min(1.0, (rms + 50) / 45))
+        if self.audio_levels:
+            level = 0.7 * level + 0.3 * self.audio_levels[-1]
+        self.audio_levels.append(level)
+        del self.audio_levels[:-64]
         self.update_audio_meter()
 
     async def on_unmount(self) -> None:
