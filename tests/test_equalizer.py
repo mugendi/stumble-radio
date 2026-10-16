@@ -43,7 +43,7 @@ def test_presets_bypass_reset_and_snapshot():
     assert automatic.active and automatic.target_lufs == -17
     graph = automatic.filter_graph()
     assert "ebur128=metadata=1:framelog=quiet" in graph
-    assert "volume@stumble_auto=-12dB" in graph
+    assert "volume@stumble_auto=0dB" in graph
     assert graph.index("ebur128=") < graph.index("volume@stumble_auto") < graph.index("alimiter=")
     legacy = {"version": 1, "bands": [0] * 5, "gain_db": 0, "enabled": True}
     assert EqualizerSettings.restore(legacy).auto_level
@@ -94,6 +94,7 @@ async def test_automatic_leveler_slews_freezes_on_silence_and_ignores_repeated_s
     player.writer = Writer()
     player.equalizer = EqualizerSettings(gain_db=6, auto_level=True)
     player._reset_auto_level()
+    assert player.auto_level_correction_db == 0
     player.auto_level_started_at = 0
     player.auto_level_last_update = 3
     player.auto_level_correction_db = -12
