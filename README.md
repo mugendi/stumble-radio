@@ -140,6 +140,11 @@ Press **s** to Stumble, **t** to Teleport,
 Bug reports, ideas, and pull requests are welcome. For local setup, project
 structure, and development checks, see the [development guide](docs/development.md).
 
+## Coming soon
+We can still do better with catrgorizing these radio stations. Also the radio browser api that we rely on has a lot of repeated channels (about 12k), misspellings and more. We need cleaner data. 
+
+I plan to embark on this task soon. If you know another (cleaner) free api, please share.
+
 ## License
 
 Stumble Radio is available under the [MIT License](LICENSE).
