@@ -7,3 +7,4 @@ dist/
 *.egg-info/
 
 ./stumble-radio
+.screenshots-demo
