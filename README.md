@@ -103,7 +103,9 @@ If you are like me, and if you happen to [teleport](#discover-somewhere-new) aro
 
 [Last Play Search →](docs/last-play.md)
 
-### Work with a rhythm
+### Why PODMORO in a radio app?
+Wait, I can explain. And I believe it makes sense too.
+
 Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro scheduler so you can receive periodic musc interruptions reminding you to hug your cat. Even better is that you get to record and customize your reminders yourself, in your own voice or have your loved one'd voice remind you. You will likely heed to that voice more.
 
 - **PODMORO:** custom focus/break profiles, weekly schedules and daily focus totals.
