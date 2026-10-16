@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
@@ -54,6 +55,12 @@ def restore_volume(value: str) -> int:
 
 
 class StationTable(DataTable):
+    class Resized(Message):
+        pass
+
+    def on_resize(self) -> None:
+        self.post_message(self.Resized())
+
     class NotesRequested(Message):
         def __init__(self, stationuuid: str):
             super().__init__()
@@ -128,6 +135,7 @@ class StumbleRadio(App):
         self.filters = Search()
         self.mode = "browse"
         self.stations: list[Station] = []
+        self.table_layout_width = 0
         self.total = 0
         self.offset = 0
         self.favourites: set[str] = set()
@@ -251,8 +259,8 @@ class StumbleRadio(App):
                         yield Static("", id="playing-station", markup=False)
                         yield Static("", id="status-line", markup=False)
                     with Horizontal(id="table-actions"):
-                        yield Button("‹ Page", id="page-back")
-                        yield Button("Page ›", id="page-next")
+                        yield Button("‹ Page", id="page-back", tooltip="Previous page ([)")
+                        yield Button("Page ›", id="page-next", tooltip="Next page (])")
                         yield Button("Online ↻", id="online")
                         yield Button("Library", id="cycle-library")
                 yield StationTable(
@@ -262,10 +270,8 @@ class StumbleRadio(App):
 
     async def on_mount(self) -> None:
         self.query_one(StationTable).tooltip = "Right-click a station for notes · Enter plays it"
-        for key, label in self.TABLE_COLUMNS:
-            self.query_one(DataTable).add_column(label + "  ", key=key)
         self.query_one(DataTable).focus()
-        self.default_screen.set_class(self.size.width < 95, "narrow")
+        self.call_after_refresh(self.update_layout)
         saved_volume = await asyncio.to_thread(self.db.metadata, "volume_v1")
         try:
             self.volume_value = restore_volume(saved_volume)
@@ -313,7 +319,28 @@ class StumbleRadio(App):
             self.catalogue_loop()
 
     def on_resize(self, event) -> None:
-        self.default_screen.set_class(event.size.width < 95, "narrow")
+        self.set_class(event.size.width < 95, "narrow")
+        self.set_class(event.size.width < 70, "compact")
+        self.set_class(event.size.width < 50, "tiny")
+        self.set_class(event.size.height < 28, "short")
+        if self.is_mounted:
+            self.call_after_refresh(self.update_layout)
+
+    def update_layout(self) -> None:
+        browser = self.query_one("#browser")
+        self.default_screen.set_class(browser.size.width < 112, "stacked")
+        self.query_one("#page-back", Button).label = "‹" if self.size.width < 70 else "‹ Page"
+        self.query_one("#page-next", Button).label = "›" if self.size.width < 70 else "Page ›"
+        self.update_pinned_station()
+        self.update_status()
+        self.update_discovery_line()
+        self.update_pomodoro_line()
+        if self.table_layout_width != self.query_one(DataTable).size.width:
+            self.render_station_table(self.selected_station())
+        self.call_after_refresh(self.update_status)
+
+    def on_station_table_resized(self) -> None:
+        self.call_after_refresh(self.update_layout)
 
     @work(group="catalogue")
     async def catalogue_loop(self) -> None:
@@ -369,7 +396,15 @@ class StumbleRadio(App):
                     text = f"Auto {labels.get(state, state)} · {correction} · {target}"
             level_text = text
         self.status_line = f"{suffix} · {level_text}  {self.page_summary}"
-        self.query_one("#status-line", Static).update(self.status_line)
+        status = self.query_one("#status-line", Static)
+        status.tooltip = self.status_line
+        text = self.status_line
+        if cell_len(text) > status.size.width:
+            short_level = level_text.rsplit(" · ", 1)[0] if level_text.endswith("LUFS") else level_text
+            text = f"{suffix} · {short_level}  {self.page_summary}"
+            if cell_len(text) > status.size.width:
+                text = f"{suffix} · {short_level}  {self.page_summary.split(' of ')[0]}"
+        status.update(text)
 
     async def update_automatic_level(self) -> None:
         if self.play_state == "PLAYING":
@@ -377,9 +412,10 @@ class StumbleRadio(App):
             self.update_status()
 
     def update_discovery_line(self):
-        self.query_one("#discovery-line", Static).update(
-            f"{self.catalogue_count:,} stations cached | Shuffle · {self.pool}"
-        )
+        text = f"{self.catalogue_count:,} stations cached | Shuffle · {self.pool}"
+        discovery = self.query_one("#discovery-line", Static)
+        discovery.tooltip = text
+        discovery.update(f"Shuffle · {self.pool}" if self.size.width < 70 else text)
 
     def update_destination_line(self, flight: str = ""):
         if flight:
@@ -388,7 +424,9 @@ class StumbleRadio(App):
             text = f"◎ LANDED · {self.destination}"
         else:
             text = f"◎ {self.destination}"
-        self.query_one("#destination-line", Static).update(text)
+        destination = self.query_one("#destination-line", Static)
+        destination.update(text)
+        destination.tooltip = text
 
     def update_filter_bar(self):
         search = self.filters
@@ -418,6 +456,7 @@ class StumbleRadio(App):
             labels.append(f"Sort: {SORTS[search.order]} {'↓' if search.descending else '↑'}")
         summary = self.query_one("#active-filters", Static)
         summary.update("Filters · " + "  ·  ".join(labels))
+        summary.tooltip = "Filters · " + "  ·  ".join(labels)
         summary.display = bool(labels)
         self.query_one("#clear-filters", Button).disabled = (
             search == self.default_filters() and not self.query_one("#quick-search", Input).value
@@ -482,47 +521,14 @@ class StumbleRadio(App):
             self.load_library()
             return
         old_station = self.selected_station()
-        old_id = old_station.stationuuid if old_station else None
         self.stations, self.total, self.favourites = stations, total, favourites
         self.catalogue_count = count
         self.update_discovery_line()
-        table = self.query_one(DataTable)
-        for column, (_, label) in zip(table.columns.values(), self.TABLE_COLUMNS):
-            arrow = (
-                ("↓" if filters.descending else "↑") if column.key.value == filters.order else " "
-            )
-            column.label = Text(f"{label} {arrow}")
-        table.clear()
-        for station in stations:
-            playing = self.is_playing_station(station)
-            favourite = station.stationuuid in favourites
-            marker = Text("▶" if playing else "★" if favourite else "·")
-            if playing:
-                marker.stylize("bold #68ddc4")
-            if playing and favourite:
-                marker.append(" ★", style="bold #eebc78")
-            table.add_row(
-                marker,
-                Text(station.name[:55]),
-                Text(station.country[:24]),
-                Text(station.tags[:36]),
-                str(station.bitrate or "—"),
-                str(station.votes),
-                str(station.clickcount),
-                key=station.stationuuid,
-            )
-        if old_id:
-            for index, station in enumerate(stations):
-                if station.stationuuid == old_id or (
-                    old_station.url and station.url == old_station.url
-                ):
-                    table.move_cursor(row=index)
-                    break
+        self.render_station_table(old_station)
         start, end = (offset + 1 if total else 0), min(offset + PAGE_SIZE, total)
-        empty = "No matches. Change filters or try Online ↻." if not total else ""
         self.page_summary = f"{start:,}–{end:,} of {total:,}"
-        if empty:
-            self.page_summary += f" · {empty}"
+        if not total:
+            self.page_summary += " · No matches"
         self.query_one("#page-back", Button).disabled = not offset
         self.query_one("#page-next", Button).disabled = offset + PAGE_SIZE >= total
         self.query_one("#online", Button).disabled = (
@@ -530,6 +536,65 @@ class StumbleRadio(App):
         )
         self.update_details()
         self.update_status()
+
+    def render_station_table(self, selected: Station | None = None) -> None:
+        table = self.query_one(DataTable)
+        self.table_layout_width = table.size.width
+        scroll = table.scroll_offset
+        available = max(20, table.size.width - 1)
+        widths = {"favourite": 3, "name": 0, "bitrate": 5}
+        for key, threshold, width in (
+            ("country", 56, 18), ("tags", 86, 24),
+            ("votes", 110, 7), ("clickcount", 128, 9),
+        ):
+            if available >= threshold:
+                widths[key] = width
+        widths["name"] = max(8, available - sum(widths.values()) - 2 * len(widths))
+        rebuild_columns = [(c.key.value, c.width) for c in table.ordered_columns] != [
+            (key, widths[key]) for key, _ in self.TABLE_COLUMNS if key in widths
+        ]
+        table.clear(columns=rebuild_columns)
+        for key, label in self.TABLE_COLUMNS:
+            if key not in widths:
+                continue
+            if key == "favourite":
+                label = "▶/★"
+            arrow = (
+                ("↓" if self.filters.descending else "↑") if key == self.filters.order else ""
+            )
+            title = Text(f"{'★' if key == 'favourite' and arrow else label}{arrow}")
+            if rebuild_columns:
+                table.add_column(title, key=key, width=widths[key])
+            else:
+                table.columns[key].label = title
+        for station in self.stations:
+            playing = self.is_playing_station(station)
+            favourite = station.stationuuid in self.favourites
+            marker = Text("▶" if playing else "★" if favourite else "·")
+            if playing:
+                marker.stylize("bold #68ddc4")
+            if playing and favourite:
+                marker.append(" ★", style="bold #eebc78")
+            values = {
+                "favourite": marker, "name": station.name, "country": station.country,
+                "tags": station.tags, "bitrate": str(station.bitrate or "—"),
+                "votes": str(station.votes), "clickcount": str(station.clickcount),
+            }
+            table.add_row(*(
+                value if isinstance(value := values[key], Text)
+                else Text(value, no_wrap=True, overflow="ellipsis")
+                for key, _ in self.TABLE_COLUMNS if key in widths
+            ), key=station.stationuuid)
+        scroll_y = 0
+        if selected:
+            for index, station in enumerate(self.stations):
+                if station.stationuuid == selected.stationuuid or (
+                    selected.url and station.url == selected.url
+                ):
+                    table.move_cursor(row=index, scroll=False)
+                    scroll_y = scroll.y
+                    break
+        self.call_after_refresh(table.scroll_to, x=0, y=scroll_y, animate=False, force=True)
 
     def is_playing_station(self, station: Station) -> bool:
         return bool(
@@ -566,7 +631,11 @@ class StumbleRadio(App):
         pinned = self.query_one("#playing-station", Static)
         if self.current:
             country = f" · {self.current.country}" if self.current.country else ""
-            pinned.update(f"▶ NOW PLAYING · {self.current.name[:48]}{country}")
+            text = f"▶ NOW PLAYING · {self.current.name}{country}"
+            pinned.tooltip = text
+            if self.size.width < 70:
+                text = f"▶ {self.current.name}"
+            pinned.update(text)
             pinned.display = True
         else:
             pinned.update("")
@@ -755,7 +824,10 @@ class StumbleRadio(App):
             text = "PODMORO · off"
         if self.pomodoro.quiet:
             text += " · quiet"
-        self.query_one("#podmoro-line", Static).update(text)
+        podmoro = self.query_one("#podmoro-line", Static)
+        podmoro.update(text)
+        podmoro.tooltip = text
+        podmoro.display = bool(session or self.pomodoro.quiet or self.size.width >= 95)
 
     async def persist_pomodoro(self):
         async with self.pomodoro_save_lock:

@@ -71,7 +71,9 @@ class StationNotesScreen(ModalScreen[bool | None]):
             )
             with Horizontal(classes="dialog-actions"):
                 yield Button("Save notes", variant="primary", id="station-notes-save")
-                yield Button("Save & play", id="station-notes-play")
+                yield Button(
+                    "Save & play", id="station-notes-play", tooltip="Save notes and play this station"
+                )
                 yield Button("Cancel", id="station-notes-cancel")
 
     def on_mount(self):
@@ -387,6 +389,7 @@ class LastPlayScreen(ModalScreen[str | None]):
 
 
 class HelpScreen(ModalScreen):
+    AUTO_FOCUS = ""
     BINDINGS: ClassVar = [("escape", "close", "Close"), ("question_mark", "close", "Close")]
 
     def compose(self) -> ComposeResult:

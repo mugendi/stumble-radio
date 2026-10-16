@@ -38,6 +38,14 @@ Use a terminal of at least **80 columns × 28 rows**; **110 × 35** gives statio
 details more room. Keyboard and mouse controls both work. Use **Tab / Shift+Tab**
 to move between controls; dialogs and long tables can be scrolled.
 
+The layout also supports compact windows down to **40 × 24**. Long station names
+and filter summaries end with an ellipsis; hover to read the full text. As space
+shrinks, the sidebar, secondary table columns, and duplicate toolbar shortcuts
+are hidden. Keyboard shortcuts still work. The volume and automatic-leveling
+status stay below the playing station; the LUFS target and total result count
+are omitted when necessary, with the full status available on hover. Resizing
+preserves your playlist selection and scroll position.
+
 ## Advanced installation
 
 Use these manual steps if you prefer to manage dependencies and the Python
