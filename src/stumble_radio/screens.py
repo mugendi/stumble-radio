@@ -9,7 +9,17 @@ from textual import work
 from textual.app import ComposeResult
 from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Checkbox, DataTable, Input, Label, OptionList, Select, Static
+from textual.widgets import (
+    Button,
+    Checkbox,
+    DataTable,
+    Input,
+    Label,
+    OptionList,
+    Select,
+    Static,
+    TextArea,
+)
 from textual.widgets.option_list import Option
 
 from .db import PAGE_SIZE, Database
@@ -22,6 +32,97 @@ from .query import (
     quote_value,
     validate_expression,
 )
+
+
+class StationNotesScreen(ModalScreen[bool | None]):
+    BINDINGS: ClassVar = [
+        ("escape", "cancel", "Cancel"),
+        ("ctrl+s", "save", "Save notes"),
+    ]
+
+    def __init__(self, db: Database, station: Station, notes: str, tags: str):
+        super().__init__()
+        self.db, self.station = db, station
+        self.notes, self.tags = notes, tags
+        self.saving = False
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="station-notes-dialog"):
+            yield Label("Station notes", classes="dialog-title")
+            yield Static(self.station.name, id="notes-station", markup=False)
+            yield Static(
+                " · ".join(filter(None, (self.station.country, self.station.tags))),
+                id="notes-station-details", markup=False,
+            )
+            yield Label("Notes · moods, shows, DJs, best time to tune in")
+            yield TextArea(
+                self.notes, id="station-notes-text", soft_wrap=True,
+                placeholder="What will help you remember this station?",
+            )
+            yield Label("Personal tags · comma-separated")
+            yield Input(
+                self.tags, id="station-notes-tags", max_length=1000,
+                placeholder="happy, work, no ads",
+            )
+            yield Static("", id="station-notes-error", markup=False)
+            yield Static(
+                "Notes and tags are searchable · Ctrl+S saves · Esc discards edits",
+                classes="muted", markup=False,
+            )
+            with Horizontal(classes="dialog-actions"):
+                yield Button("Save notes", variant="primary", id="station-notes-save")
+                yield Button("Save & play", id="station-notes-play")
+                yield Button("Cancel", id="station-notes-cancel")
+
+    def on_mount(self):
+        self.query_one("#station-notes-error", Static).display = False
+        self.query_one(TextArea).focus()
+
+    def on_input_changed(self, event: Input.Changed):
+        event.stop()
+
+    def on_input_submitted(self, event: Input.Submitted):
+        event.stop()
+
+    async def on_button_pressed(self, event: Button.Pressed):
+        event.stop()
+        if event.button.id == "station-notes-cancel":
+            self.action_cancel()
+        elif event.button.id in {"station-notes-save", "station-notes-play"}:
+            await self.save(play=event.button.id == "station-notes-play")
+
+    async def action_save(self):
+        await self.save()
+
+    async def save(self, *, play: bool = False):
+        if self.saving:
+            return
+        self.saving = True
+        for button in self.query(Button):
+            button.disabled = True
+        try:
+            await asyncio.to_thread(
+                self.db.save_station_notes, self.station,
+                self.query_one(TextArea).text,
+                self.query_one("#station-notes-tags", Input).value,
+            )
+        except (ValueError, sqlite3.Error, OSError) as error:
+            feedback = self.query_one("#station-notes-error", Static)
+            feedback.update(
+                str(error) if isinstance(error, ValueError)
+                else "Could not save notes. Check disk space and permissions, then try again."
+            )
+            feedback.display = True
+        else:
+            self.dismiss(play)
+        finally:
+            self.saving = False
+            for button in self.query(Button):
+                button.disabled = False
+
+    def action_cancel(self):
+        if not self.saving:
+            self.dismiss(None)
 
 
 class SearchScreen(ModalScreen[Search | None]):
@@ -301,6 +402,8 @@ class HelpScreen(ModalScreen):
                 "Ctrl+G    Language, location and recovery settings\n"
                 "Ctrl+O    Podmoro focus scheduler and voice clips\n"
                 "Enter     Play highlighted station\n"
+                "Right-click / i Station notes and personal tags\n"
+                "e         Equalizer, gain and sound presets\n"
                 "Space     Pause / resume\n"
                 "n / p     Next / previous station in this result list\n"
                 "f         Toggle favourite for highlighted station\n"

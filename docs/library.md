@@ -43,6 +43,37 @@ Ctrl+B opens a small picker for the current results page. Type to narrow its cho
 
 Quick tune searches the current page. Use the [main search bar](search.md) to search the entire cached catalogue.
 
+## Station notes
+
+Right-click a station to open its notes, or highlight it and press **i**. **Enter** on the station list
+still plays the highlighted station; opening notes leaves playback running.
+The right-click tooltip appears for the first three stations you tune after each
+launch, then stays hidden for the rest of that session. Reconnecting the same
+station does not count toward this limit.
+
+Write multiline notes and add comma-separated personal tags. Useful details include:
+
+- Mood or energy: happy tunes, mellow evenings, upbeat mornings.
+- What it suits: work, cooking, exercise, winding down.
+- Favourite shows, DJs, or the best day and time to tune in.
+- Things you value: little talking, no ads, local news, song requests.
+
+Choose **Save notes** or press **Ctrl+S**. **Save & play** saves your edits and
+tunes the station. **Cancel** or **Escape** discards unsaved edits. Clearing both
+fields and saving removes the notes and personal tags.
+
+The main search bar and advanced search's text field include saved notes and
+personal tags. For example, `happy tunes` finds both words, while `"happy tunes"`
+finds the exact phrase. Combine them with directory filters: `happy country:KE`.
+`genre:` continues to match the public directory's genres; personal tags match
+ordinary text searches. Quick tune continues to filter station names and
+directory details on the current page.
+
+Notes are stored locally in your library database and survive restarts and
+catalogue refreshes. Exact stream-URL duplicates share notes, even when the
+displayed station entry changes. Different stream URLs keep separate notes.
+Existing library and stream-health filters still apply to search results.
+
 ## Local database and background sync
 
 SQLite is intentional: it provides a durable personal library, quick local
@@ -118,9 +149,11 @@ Default data location:
 
 The directory contains `radio.sqlite3`, SQLite's transient WAL files, a
 `recordings/` subdirectory, and the default `pomodoro/audio/commands/` voice
-library. The database holds favourites, listening and song history, learning
-preferences, and Podmoro profiles, schedules and checkpoints. These do not require
-a separate account or cloud service. No telemetry is added.
+library. The database holds favourites, station notes and personal tags,
+listening and song history, learning preferences, global equalizer and gain
+settings, and Podmoro profiles, schedules and checkpoints. Equalizer settings
+are saved under the `equalizer_v1` metadata key and apply to all stations.
+These do not require a separate account or cloud service. No telemetry is added.
 When online, a successful play sends the directory's standard click notification.
 
 ```bash

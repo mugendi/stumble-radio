@@ -33,6 +33,8 @@ src/stumble_radio/
   models.py    Station parsing, search validation, geographic distance
   query.py     Field operators, boolean query parsing and query formatting
   player.py    mpv IPC, playback events, FFmpeg recording lifecycle
+  equalizer.py  Validated five-band EQ, gain, presets and filter graph
+  equalizer_screen.py  Live sound preview, save and cancellation
   network.py   Recovery reachability checks and capped reconnect delays
   pomodoro.py  Focus/break clocks, reminders, weekly rules and checkpoints
   pomodoro_screen.py  Session, profile, schedule and voice-library editors

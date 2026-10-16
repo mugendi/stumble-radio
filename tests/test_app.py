@@ -7,6 +7,7 @@ from textual.widgets import Button, DataTable, Input, Select, Static
 
 from stumble_radio.app import StumbleRadio
 from stumble_radio.discovery import POOL_MODES, DiscoverySettings
+from stumble_radio.equalizer import EqualizerSettings
 from stumble_radio.models import Search
 from stumble_radio.player import PlayerError
 from stumble_radio.query import format_query, parse_query
@@ -39,6 +40,10 @@ class FakePlayer:
         self.position = 1.0
         self.rms = -20
         self.volumes = []
+        self.equalizer = EqualizerSettings()
+
+    async def set_equalizer(self, settings):
+        self.equalizer = settings
 
     async def play(self, station):
         self.station = station
@@ -54,6 +59,9 @@ class FakePlayer:
     async def health(self):
         self.position += 1
         return self.position, self.rms
+
+    async def audio_level(self):
+        return self.rms
 
     async def set_volume(self, value):
         self.volumes.append(value)

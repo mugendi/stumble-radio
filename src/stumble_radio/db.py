@@ -13,7 +13,7 @@ from .discovery import (
     diversity_score,
     shuffle_key,
 )
-from .models import Search, Station, distance_km
+from .models import Search, Station, clean, distance_km
 from .query import search_from_tokens
 from .tracks import Track
 
@@ -62,6 +62,11 @@ class Database:
                 );
                 CREATE INDEX IF NOT EXISTS history_station ON history(stationuuid);
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS station_notes (
+                    stationuuid TEXT PRIMARY KEY REFERENCES stations(stationuuid),
+                    notes TEXT NOT NULL, tags TEXT NOT NULL,
+                    search_fold TEXT NOT NULL, updated_at REAL NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS affinity (
                     stationuuid TEXT PRIMARY KEY REFERENCES stations(stationuuid),
                     listened_seconds REAL NOT NULL DEFAULT 0,
@@ -199,6 +204,43 @@ class Database:
             ).fetchone()
             return Station(**{key: row[key] for key in STATION_COLUMNS}) if row else None
 
+    def station_notes(self, station: Station) -> dict[str, str]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT n.notes,n.tags FROM station_notes n JOIN stations s USING(stationuuid) "
+                "WHERE s.stationuuid=? OR (s.url!='' AND s.url="
+                "(SELECT url FROM stations WHERE stationuuid=?)) "
+                "ORDER BY n.updated_at,n.stationuuid",
+                (station.stationuuid, station.stationuuid),
+            ).fetchall()
+        return {
+            "notes": "\n\n".join(dict.fromkeys(row["notes"] for row in rows if row["notes"])),
+            "tags": ", ".join(dict.fromkeys(
+                tag.strip() for row in rows for tag in row["tags"].split(",") if tag.strip()
+            )),
+        }
+
+    def save_station_notes(self, station: Station, notes: str, tags: str = "") -> None:
+        if len(notes) > 20_000 or len(tags) > 1_000:
+            raise ValueError("Use at most 20,000 characters for notes and 1,000 for personal tags.")
+        notes = re.sub(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]", "", notes).strip()
+        tags = ", ".join(dict.fromkeys(tag.strip() for tag in clean(tags).split(",") if tag.strip()))
+        if self.station(station.stationuuid) is None:
+            self.upsert([station], reactivate=False)
+        with self.connect() as db:
+            # Notes follow the same exact-URL groups as favourites, including a new representative.
+            db.execute(
+                "DELETE FROM station_notes WHERE stationuuid IN "
+                "(SELECT stationuuid FROM stations WHERE stationuuid=? OR (url!='' AND "
+                "url=(SELECT url FROM stations WHERE stationuuid=?)))",
+                (station.stationuuid, station.stationuuid),
+            )
+            if notes or tags:
+                db.execute(
+                    "INSERT INTO station_notes VALUES (?,?,?,?,?)",
+                    (station.stationuuid, notes, tags, (notes + "\n" + tags).casefold(), time.time()),
+                )
+
     def add_track(self, station: Station, track: Track, *, played_at: float | None = None) -> int:
         with self.connect() as db:
             result = db.execute(
@@ -293,8 +335,9 @@ class Database:
                 clauses.append(f"instr(s.{key}_fold,?) > 0")
                 params.append(value.casefold())
         for term in search.terms:
-            clauses.append("(instr(s.name_fold,?)>0 OR instr(s.tags_fold,?)>0)")
-            params.extend((term.casefold(), term.casefold()))
+            personal = Database._url_members("station_notes", "instr(search_fold,?)>0")
+            clauses.append(f"(instr(s.name_fold,?)>0 OR instr(s.tags_fold,?)>0 OR {personal})")
+            params.extend((term.casefold(),) * 4)
         if search.expression:
             sql, arguments = Database._expression_where(search.expression)
             clauses.append(sql)

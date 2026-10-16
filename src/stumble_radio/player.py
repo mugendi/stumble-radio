@@ -8,7 +8,10 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
+from .equalizer import EqualizerSettings
 from .models import Station, clean, stream_url
+
+METER_FILTER = "@stumble_meter:lavfi=[astats=metadata=1:reset=1]"
 
 
 class PlayerError(Exception):
@@ -38,6 +41,66 @@ class Player:
         self.start_lock = asyncio.Lock()
         self.closing_mpv = False
         self.output_volume = 65
+        self.equalizer = EqualizerSettings()
+        self.filter_settings = EqualizerSettings()
+        self.audio_lock = asyncio.Lock()
+        self.effects_supported = None
+
+    async def check_equalizer_support(self) -> None:
+        if self.effects_supported is None:
+            if not shutil.which("mpv"):
+                raise PlayerError("Install mpv to use the equalizer.")
+            process = await asyncio.create_subprocess_exec(
+                "mpv", "--no-config", "--af=help", stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+            )
+            try:
+                output, _ = await asyncio.wait_for(process.communicate(), timeout=5)
+                names = set(re.findall(r"^\s*(\S+)\s", output.decode(errors="replace"), re.MULTILINE))
+                self.effects_supported = process.returncode == 0 and {
+                    "aformat", "equalizer", "volume", "alimiter"
+                } <= names
+            except TimeoutError as error:
+                raise PlayerError("Timed out checking mpv equalizer support. Try again.") from error
+            finally:
+                if process.returncode is None:
+                    process.kill()
+                    await process.wait()
+        if not self.effects_supported:
+            raise PlayerError("This mpv build lacks equalizer filters. Use Bypass or upgrade mpv.")
+
+    async def apply_equalizer_filter(self, settings: EqualizerSettings) -> None:
+        if settings == self.filter_settings:
+            return
+        previous = self.filter_settings
+        try:
+            graph = settings.filter_graph()
+            if graph:
+                await self.command("af", "add", f"@stumble_eq:lavfi=[{graph}]")
+            elif previous.active:
+                await self.command("af", "remove", "@stumble_eq")
+        except PlayerError as error:
+            chain = METER_FILTER
+            if previous.active:
+                chain += f",@stumble_eq:lavfi=[{previous.filter_graph()}]"
+            try:
+                await self.command("af", "set", chain)
+            except PlayerError:
+                await self.command("af", "set", METER_FILTER)
+                self.equalizer = self.filter_settings = EqualizerSettings(enabled=False)
+            raise PlayerError("Could not apply equalizer settings; the working sound was restored.") from error
+        self.filter_settings = settings
+
+    async def set_equalizer(self, settings: EqualizerSettings) -> None:
+        async with self.audio_lock:
+            live = self.writer and not self.writer.is_closing()
+            if not live and settings == self.equalizer:
+                return
+            if settings.active:
+                await self.check_equalizer_support()
+            if live:
+                await self.apply_equalizer_filter(settings)
+            self.equalizer = settings
 
     async def start(self) -> None:
         async with self.start_lock:
@@ -67,7 +130,7 @@ class Player:
                 f"--volume={self.output_volume}",
                 "--network-timeout=15",
                 "--cache=yes",
-                "--af=@stumble_meter:lavfi=[astats=metadata=1:reset=1]",
+                f"--af={METER_FILTER}",
                 f"--input-ipc-server={socket_path}",
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
@@ -138,14 +201,23 @@ class Player:
 
     async def play(self, station: Station) -> Path | None:
         url = stream_url(station.url)
-        await self.start()
-        await self.set_volume(self.output_volume)
-        saved = await self.stop_recording()
-        await self.command("set_property", "pause", False)
-        self.loading_station = station
-        await self.command("loadfile", url, "replace")
-        self.station = station
-        return saved
+        async with self.audio_lock:
+            await self.start()
+            try:
+                if self.equalizer.active:
+                    await self.check_equalizer_support()
+                await self.apply_equalizer_filter(self.equalizer)
+            except (PlayerError, OSError) as error:
+                self.equalizer = EqualizerSettings(enabled=False)
+                await self.apply_equalizer_filter(self.equalizer)
+                await self.events.put({"event": "equalizer-error", "error": clean(str(error))})
+            await self.set_volume(self.output_volume)
+            saved = await self.stop_recording()
+            await self.command("set_property", "pause", False)
+            self.loading_station = station
+            await self.command("loadfile", url, "replace")
+            self.station = station
+            return saved
 
     async def pause(self) -> None:
         if not self.station:
@@ -281,9 +353,11 @@ class Player:
             if self.tempdir:
                 self.tempdir.cleanup()
             self.process = self.writer = self.reader = self.reader_task = self.tempdir = None
+            self.filter_settings = EqualizerSettings()
         finally:
             self.closing_mpv = False
 
     async def close(self) -> None:
-        await self.stop_recording()
-        await self._close_mpv()
+        async with self.audio_lock:
+            await self.stop_recording()
+            await self._close_mpv()

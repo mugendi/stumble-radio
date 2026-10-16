@@ -9,7 +9,10 @@ Screenshots show the actual interface with fictional stations and demonstration 
 This query requires rock OR blues tags in Kenya. The filter summary explains the smaller result set. Matching starred stations lead the list, followed by the selected Votes sort.
 
 Type a query directly into the main search bar. Results update as you type.
-Plain words match **station names or genre/format tags**, case-insensitively.
+Plain words match **station names, genre/format tags, saved notes, or personal
+tags**, case-insensitively. A note such as "plays happy tunes" lets you find the
+station later with `happy tunes` or the exact phrase `"happy tunes"`. Right-click a
+station or press **i** to edit its [notes and personal tags](library.md#station-notes).
 Use `name:` when you want to search station names specifically. All the filters
 from the advanced-search form have a corresponding query operator below.
 
@@ -84,7 +87,7 @@ the value is enclosed in double quotes.
 
 | Operator | Aliases | Meaning and examples |
 | --- | --- | --- |
-| Plain word / `text:` | — | Name-or-tag substring: `slow`, `"classic rock"`, `text:"Radio:Jazz"` |
+| Plain word / `text:` | — | Substring in station names, public tags, notes, or personal tags: `slow`, `"happy tunes"`, `text:"Radio:Jazz"` |
 | `name:` | — | Station-name substring: `name:"Capital FM"` |
 | `country:` | `county:`, `countrycode:` | Exact country name or two-letter ISO code: `country:kenya`, `country:KE`, `country:"United Kingdom"` |
 | `state:` | `region:`, `city:` | Region/state substring: `region:Nairobi`, `state:California`. City data depends on the directory; this does not geocode a place name. |

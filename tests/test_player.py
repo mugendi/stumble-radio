@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from stumble_radio.equalizer import EqualizerSettings
 from stumble_radio.player import Player, PlayerError
 from stumble_radio.tracks import Track, track_from_metadata
 
@@ -198,6 +199,7 @@ async def test_real_mpv_reports_decoded_silence_and_tone(tmp_path, station, monk
     port = server.sockets[0].getsockname()[1]
     player = Player(tmp_path)
     try:
+        await player.set_equalizer(EqualizerSettings(gain_db=12))
         await player.play(replace(station, url=f"http://127.0.0.1:{port}/sample.wav"))
         silent = audible = False
         for _ in range(50):
@@ -209,9 +211,10 @@ async def test_real_mpv_reports_decoded_silence_and_tone(tmp_path, station, monk
             if rms is not None:
                 silent |= rms <= -50
                 audible |= rms > -50
-            if silent and audible:
+            if silent and audible and rms is not None and rms > -20:
                 break
         assert silent and audible
+        assert -20 < rms < -15  # Source metering stays before the +12 dB playback gain.
         metadata = []
         while not player.events.empty():
             event = player.events.get_nowait()

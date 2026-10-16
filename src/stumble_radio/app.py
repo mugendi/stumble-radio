@@ -13,12 +13,16 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, HorizontalGroup, Vertical
+from textual.events import Click
+from textual.message import Message
 from textual.widgets import Button, DataTable, Footer, Input, Select, Static
 
 from .announcements import AnnouncementPlayer, AudioLibrary
 from .api import DirectoryError, RadioBrowser, sync_catalogue
 from .db import PAGE_SIZE, Database
 from .discovery import MAX_RECOVERY_ATTEMPTS, POOL_MODES, DiscoverySettings
+from .equalizer import EqualizerSettings
+from .equalizer_screen import EqualizerScreen
 from .models import SORTS, Search, Station, clean
 from .network import NETWORK_POLL_SECONDS, internet_available, retry_delay
 from .player import Player, PlayerError
@@ -32,9 +36,27 @@ from .screens import (
     SearchScreen,
     SettingsScreen,
     SleepScreen,
+    StationNotesScreen,
     StationPicker,
 )
 from .tracks import track_from_metadata
+
+
+class StationTable(DataTable):
+    class NotesRequested(Message):
+        def __init__(self, stationuuid: str):
+            super().__init__()
+            self.stationuuid = stationuuid
+
+    def on_click(self, event: Click):
+        if event.button != 3:
+            return
+        event.prevent_default()
+        event.stop()
+        row = event.style.meta.get("row", -1)
+        if 0 <= row < self.row_count and "column" in event.style.meta:
+            self.move_cursor(row=row)
+            self.post_message(self.NotesRequested(self.ordered_rows[row].key.value))
 
 
 class StumbleRadio(App):
@@ -63,6 +85,8 @@ class StumbleRadio(App):
         Binding("n", "next_station", "Next", show=False),
         Binding("p", "previous_station", "Previous", show=False),
         Binding("f", "favourite", "Favourite"),
+        Binding("i", "notes", "Notes"),
+        Binding("e", "equalizer", "EQ"),
         Binding("r", "record", "Record"),
         Binding("ctrl+b", "picker", "Quick tune", show=False),
         Binding("plus,equals", "volume_up", "Volume +", show=False),
@@ -97,6 +121,7 @@ class StumbleRadio(App):
         self.offset = 0
         self.favourites: set[str] = set()
         self.current: Station | None = None
+        self.notes_hint_count = 0
         self.pin_current_pending = False
         self.play_state = "READY"
         self.media_title = ""
@@ -184,7 +209,6 @@ class StumbleRadio(App):
         )
         with Horizontal(id="body"):
             with Vertical(id="sidebar"):
-                yield Static("YOUR DIAL", classes="eyebrow")
                 yield Select(
                     [
                         ("Explore", "browse"),
@@ -212,7 +236,9 @@ class StumbleRadio(App):
                 yield Static(
                     "Explore · building your station library", id="list-heading", markup=False
                 )
-                yield DataTable(id="stations", cursor_type="row", zebra_stripes=True)
+                yield StationTable(
+                    id="stations", cursor_type="row", zebra_stripes=True,
+                )
                 with Horizontal(id="page-controls"):
                     yield Static("", id="page-label", markup=False)
                     yield Button("‹ Page", id="page-back")
@@ -226,10 +252,20 @@ class StumbleRadio(App):
         yield Footer()
 
     async def on_mount(self) -> None:
+        self.query_one(StationTable).tooltip = "Right-click a station for notes · Enter plays it"
         for key, label in self.TABLE_COLUMNS:
             self.query_one(DataTable).add_column(label + "  ", key=key)
         self.query_one(DataTable).focus()
         self.default_screen.set_class(self.size.width < 95, "narrow")
+        saved_equalizer = await asyncio.to_thread(self.db.metadata, "equalizer_v1")
+        try:
+            self.player.equalizer = (
+                EqualizerSettings.restore(json.loads(saved_equalizer))
+                if saved_equalizer else EqualizerSettings()
+            )
+        except (ValueError, TypeError, KeyError):
+            self.player.equalizer = EqualizerSettings()
+            self.notify("Equalizer settings were invalid; using flat sound.", severity="warning")
         saved = await asyncio.to_thread(self.db.metadata, "discovery_settings")
         if saved:
             try:
@@ -496,12 +532,17 @@ class StumbleRadio(App):
             )
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        if event.data_table.id == "stations":
+        if self.is_running and event.data_table.id == "stations":
             self.update_details()
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id == "stations" and (station := self.selected_station()):
             self.manual_tune(station)
+
+    def on_station_table_notes_requested(self, event: StationTable.NotesRequested):
+        station = next((s for s in self.stations if s.stationuuid == event.stationuuid), None)
+        if station:
+            self.open_station_notes(station)
 
     def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
         if event.data_table.id != "stations":
@@ -591,6 +632,42 @@ class StumbleRadio(App):
                 self.manual_tune(station)
 
         self.push_screen(StationPicker(self.stations), pick)
+
+    def action_notes(self):
+        if station := self.selected_station():
+            self.open_station_notes(station)
+
+    def action_equalizer(self):
+        if not isinstance(self.screen, EqualizerScreen):
+            self.push_screen(EqualizerScreen(self.player.equalizer))
+
+    async def save_equalizer(self, settings: EqualizerSettings):
+        try:
+            await asyncio.to_thread(
+                self.db.set_metadata, "equalizer_v1", json.dumps(settings.snapshot(), allow_nan=False)
+            )
+        except (sqlite3.Error, OSError) as error:
+            raise ValueError("Could not save sound settings. Check disk space and permissions, then retry.") from error
+        self.notify("Equalizer settings saved.")
+
+    @work(exclusive=True, group="station-notes")
+    async def open_station_notes(self, station: Station):
+        if isinstance(self.screen, StationNotesScreen):
+            return
+        try:
+            details = await asyncio.to_thread(self.db.station_notes, station)
+        except (sqlite3.Error, OSError):
+            self.notify("Could not read station notes. Please try again.", severity="warning")
+            return
+
+        async def saved(play):
+            if play is not None:
+                self.notify("Station notes saved.")
+                await self.refresh_library()
+                if play:
+                    self.manual_tune(station)
+
+        self.push_screen(StationNotesScreen(self.db, station, **details), saved)
 
     def action_help(self) -> None:
         self.push_screen(HelpScreen())
@@ -1003,6 +1080,10 @@ class StumbleRadio(App):
             if not recovery:
                 self.recovery_attempts = 0
                 self.failed_ids.clear()
+            if not self.is_playing_station(station):
+                self.notes_hint_count += 1
+                if self.notes_hint_count > 3:
+                    self.query_one(StationTable).tooltip = None
             self.current = station
             self.pin_current_pending = True
             self.load_library()
@@ -1155,6 +1236,8 @@ class StumbleRadio(App):
             self.update_now_playing()
 
     def update_now_playing(self, station: Station | None = None) -> None:
+        if not self.is_running:
+            return
         pause_button = self.query_one("#pause", Button)
         can_pause = self.current is not None and self.playback_wanted and not self.user_paused
         pause_button.label = "⏸" if can_pause else "▶"
@@ -1238,6 +1321,8 @@ class StumbleRadio(App):
                 if self.playback_wanted or self.user_paused:
                     self.play_state = "PAUSED" if self.user_paused else "DISCONNECTED"
                     self.queue_recovery("Player disconnected")
+            elif kind == "equalizer-error":
+                self.notify("Equalizer bypassed: " + event["error"], severity="warning", markup=False)
             elif kind == "recording-ended":
                 if event["code"]:
                     self.notify(
@@ -1494,6 +1579,8 @@ class StumbleRadio(App):
         self.update_status()
 
     def update_audio_meter(self) -> None:
+        if not self.is_running:
+            return
         meter = self.query_one("#audio-meter", Static)
         if self.size.width < 95 or not self.current or self.play_state != "PLAYING":
             meter.update("")

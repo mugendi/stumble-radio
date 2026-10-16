@@ -38,6 +38,7 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 ### Listen, record and drift off
 
 - Play/pause, previous/next station, volume controls, and broadcaster song metadata.
+- Tune a five-band equalizer and up to +12 dB gain, with presets, live preview and saved settings.
 - Record the original audio while continuing to browse or pausing your listening.
 - Retry interrupted streams and resume when the internet comes back.
 - Automatically skip dead or silent stations during random discovery.
@@ -72,6 +73,7 @@ One of the features I have always wished Radio Garden did a better job at. Now y
 Discovered a gem? Favourite it, always be in a position to step back and find stations you love.
 
 - Save favourites and browse Explore, Favourites, History, or Unheard.
+- Right-click a station to save notes and personal tags; search remembered details like "happy tunes".
 - Keep the currently playing station pinned above results with a clear ▶ marker,
   ready to favourite with **f**.
 - Open a compact, searchable Quick tune picker.

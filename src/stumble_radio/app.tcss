@@ -15,7 +15,7 @@ Button:hover { background: #263b4c; }
 Button.-primary { color: #10161e; background: #68ddc4; border: tall #68ddc4; text-style: bold; }
 Button.-primary:hover { background: #98eedb; }
 #body { height: 1fr; padding: 0 2; }
-#sidebar { width: 28; padding: 1 1 0 0; }
+#sidebar { width: 28; padding: 0 1 0 0; }
 .eyebrow { color: #68ddc4; text-style: bold; height: 2; }
 #library { margin-bottom: 1; }
 #detail { height: 1fr; color: #aab9c8; overflow-y: auto; }
@@ -39,6 +39,8 @@ Footer { background: #10161e; }
 Footer > .footer--key { background: #263b4c; color: #68ddc4; }
 Input { background: #141e28; border: tall #283748; }
 Input:focus { border: tall #68ddc4; }
+TextArea { background: #141e28; border: tall #283748; }
+TextArea:focus { border: tall #68ddc4; }
 Select { height: 3; }
 ModalScreen { align: center middle; background: #000000 65%; }
 #search-dialog { width: 76; max-width: 95%; height: 90%; padding: 1 2; border: round #68ddc4; background: #10161e; }
@@ -49,6 +51,28 @@ ModalScreen { align: center middle; background: #000000 65%; }
 #filter-grid Label { content-align: left middle; height: 3; }
 #search-error { height: auto; color: #f49d9d; }
 .dialog-actions { height: 3; margin-top: 1; }
+#equalizer-dialog { width: 76; max-width: 95%; height: 95%; max-height: 36; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#eq-options { height: 3; margin-bottom: 1; }
+#eq-bypass { width: 17; }
+#eq-preset { width: 1fr; }
+#eq-fields { height: 1fr; min-height: 3; margin-bottom: 1; }
+.eq-row { height: 3; }
+.eq-row Label { width: 18; height: 3; content-align: left middle; }
+.eq-row Button { width: 5; min-width: 5; padding: 0; margin: 0; }
+.eq-row Input { width: 10; margin: 0 1; }
+.eq-unit { width: 5; height: 3; content-align: left middle; }
+#eq-gain-row Label { color: #eebc78; }
+#eq-error { height: auto; color: #f49d9d; }
+#station-notes-dialog { width: 80; max-width: 95%; height: 90%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#notes-station { height: auto; max-height: 3; text-style: bold; }
+#notes-station-details { height: auto; max-height: 2; color: #8a9bac; margin-bottom: 1; }
+#station-notes-dialog Label { height: auto; }
+#station-notes-dialog .dialog-title { height: 2; }
+#station-notes-text { height: 1fr; min-height: 3; margin-bottom: 1; }
+#station-notes-tags { margin-bottom: 1; }
+#station-notes-error { height: auto; color: #f49d9d; }
+#station-notes-dialog .dialog-actions { margin-top: 0; }
+#station-notes-dialog .muted { margin-bottom: 0; }
 #picker-dialog { width: 72; max-width: 95%; height: 70%; padding: 1 2; border: round #68ddc4; background: #10161e; }
 #picker-options { height: 1fr; margin: 1 0; background: #10161e; }
 #help-dialog { width: 76; max-width: 95%; height: auto; max-height: 95%; overflow-y: auto; padding: 1 2; border: round #68ddc4; background: #10161e; }

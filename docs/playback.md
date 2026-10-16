@@ -27,6 +27,8 @@ station list. `Ctrl+Q` quits even while an input has focus.
 | `Ctrl+O` | Open the right-aligned PODMORO scheduler button |
 | `↑` / `↓` | Highlight a station |
 | `Enter` | Play the highlighted station |
+| Right-click a station / `i` | Edit station notes and personal tags |
+| `e` | Open equalizer, gain and presets |
 | `Space` | Pause/resume; play the selected station if stopped |
 | `n` / `p` | Next/previous station within the visible results page, wrapping at the ends |
 | `f` | Toggle favourite for the **highlighted** station |
@@ -47,6 +49,39 @@ Explore, Favourites, History, and Unheard; it remains available on narrow termin
 where the sidebar is hidden. A library change clears filters so saved stations
 are easy to find. The quick picker's text box filters the current page; use the
 main search or advanced filters to search the entire catalogue.
+
+## Equalizer and gain
+
+Press **e** to open the equalizer. One saved setup applies to
+all stations, including after changing stations, reconnecting, or restarting.
+
+- Adjust **60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz** from **−12 to +12 dB**.
+- **Gain / boost** adds **0 to +12 dB**, separately from the normal volume control.
+- Type a whole number or use the minus/plus buttons for 1 dB steps. The fields
+  scroll on smaller terminals; Save and Cancel remain below them.
+- **Flat**, **Bass boost**, **Speech**, **Rock**, **Pop**, **Jazz**, and **Classical**
+  presets change the EQ bands while keeping your gain setting. Band settings that
+  do not match a preset show **Custom**.
+- **Bypass** temporarily disables both EQ and gain without losing their values.
+  **Reset** enables processing with flat bands and zero gain.
+
+Changes preview live after a 200 ms pause in editing. **Save** or **Ctrl+S** keeps
+the setup; **Cancel** or **Escape** restores the sound from when you opened the
+editor. Invalid values leave the last valid sound playing. A save error keeps
+your draft open for retry or cancellation. Changes can briefly reconfigure the
+audio filter without retuning the station or restarting a recording.
+
+With EQ or gain active, a peak limiter caps digital sample peaks at **−1 dBFS**
+without automatic makeup gain.
+Boost helps quieter streams; already-loud streams may sound compressed. Flat EQ
+with zero gain is unprocessed. Normal volume, pause, sleep fading, and Podmoro
+voice volume remain independent. Recordings retain the original stream, and
+silence detection and the audio meter measure the source before EQ and gain.
+
+The equalizer uses mpv's audio filters. An unsupported build or rejected filter
+shows an error and restores working sound; restored settings that cannot be
+applied are bypassed so playback can continue. Voice prompts use their separate
+player and are unaffected by EQ.
 
 ## Reconnection, internet outages, and dead streams
 
