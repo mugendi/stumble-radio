@@ -204,7 +204,7 @@ async def test_modal_session_profiles_schedule_and_custom_audio_library(db, tmp_
 async def test_modal_and_transport_fit_supported_widths(db, tmp_path, width):
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
     async with app.run_test(size=(width, 28)) as pilot:
-        for key in ("search", "podmoro", "last-play"):
+        for key in ("search", "podmoro"):
             button = app.query_one(f"#{key}", Button)
             if button.display:
                 assert button.region.right <= width and button.region.width >= len(

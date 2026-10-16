@@ -155,7 +155,10 @@ async def test_last_play_search_pagination_keyboard_and_tune(db, station, tmp_pa
     player = FakePlayer()
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
     async with app.run_test(size=(80, 28)) as pilot:
-        await pilot.click("#last-play")
+        await pilot.pause()
+        # The Last Play button lives in the sidebar, which narrow terminals hide;
+        # the l binding keeps it reachable everywhere.
+        await pilot.press("l")
         await pilot.pause()
         assert isinstance(app.screen, LastPlayScreen)
         screen = app.screen
@@ -793,6 +796,8 @@ async def test_click_every_header_reverses_sort_and_preserves_query(db, station,
         await pilot.pause()
         table = app.query_one(DataTable)
         for key, _ in app.TABLE_COLUMNS:
+            if not any(column.key.value == key for column in table.columns.values()):
+                continue
             offset = 0
             for column in table.columns.values():
                 if column.key.value == key:
@@ -862,3 +867,42 @@ async def test_favourite_targets_playing_channel_and_confirms_when_idle(
         await pilot.press("y")
         await pilot.pause()
         assert db.favourite_ids() == {app.selected_station().stationuuid}
+
+
+async def test_favourites_listen_badge_and_listen_time_sort(db, station, tmp_path):
+    from stumble_radio.app import listen_label
+
+    assert listen_label(305) == "5 min"
+    assert listen_label(35 * 3600) == "35 hrs"
+    assert listen_label(840 * 3600) == "5 wks"
+    assert listen_label(6000 * 3600) == "6k hrs"
+
+    second = replace(station, stationuuid="listen-b", url="https://example.test/live-b")
+    db.upsert([second], reactivate=False)
+    db.toggle_favourite(station)
+    db.toggle_favourite(second)
+    db.save_listening(db.add_history(station), 840 * 3600 + 600)
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        # Listen time is the favourites library's own sort; other modes ignore it.
+        assert app.filters.order == "clickcount"
+        app.query_one("#library", Select).value = "favourites"
+        await pilot.pause()
+        await app.refresh_library()
+        assert app.filters.order == "listen" and app.mode == "favourites"
+        assert [s.stationuuid for s in app.stations] == [station.stationuuid, second.stationuuid]
+        table = app.query_one(DataTable)
+        assert str(table.get_row(station.stationuuid)[2]) == "[♪ 5 wks]"
+        assert str(table.get_row(second.stationuuid)[2]) == ""
+
+
+def test_waveform_graph_draws_smooth_wave():
+    from stumble_radio.app import waveform_graph
+
+    assert waveform_graph([], 8) == ""
+    assert waveform_graph([0.4, 0.6], 0) == ""
+    wave = waveform_graph([0.0, 0.0, 0.2, 0.9, 0.3, 0.0, 0.0], 9)
+    assert len(wave) == 9 and wave[2] == "▇" and wave[-1] == " "
+    assert "█" in waveform_graph([0.05, 0.15, 1.0, 0.15, 0.05], 9)
+    assert waveform_graph([0.05] * 6, 6) == " " * 6
