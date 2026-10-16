@@ -36,6 +36,7 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 ## Features
 
 ### Listen, record and drift off
+Truly battery included. Stumble Ration inclides all the playback features I have ever wanted from a radio/music player baked in.
 
 - Play/pause, previous/next station, volume controls, and broadcaster song metadata.
 - Tune a five-band equalizer and up to +12 dB gain, with presets, live preview and saved settings; automatic loudness leveling starts enabled by default.
@@ -48,7 +49,9 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 [Playback, recording, sleep and keyboard controls →](docs/playback.md)
 
 ### Discover somewhere new
-This is probably my most favorite feature. I start the radio, **teleport** to a random place and then **stumble** upon amazing stations that I end up adding to my favorites. And I can even set shuffle mode to **Music Only** so that I am roaming the world discovering only channels that focus mostly opn music.
+This is probably my most favorite feature. I start the radio, **teleport** to a random place and then **stumble** upon amazing stations that I end up adding to my favorites. And I can even set shuffle mode to **Music Only** so that I am roaming the world discovering only channels that focus mostly on music.
+
+Even better, I can perform an advanced search like 'tag:country country:US' which finds country radio stations in US and then do my **teleporting** and **stumbling** within this exclusive list.
 
 It is truly interesting.
 
@@ -117,14 +120,10 @@ Install Stumble Radio and its audio dependencies with one command:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
 ```
+This simple installer checks that your system has all the needed tools installed such as  `curl`, `tar`, `mpv`, FFmpeg, and `uv`, and explains why each is needed. It does not need root access nor does it install these tools for you.
 
-The installer checks `curl`, `tar`, `mpv`, FFmpeg, and `uv`, and explains why
-each is needed. It shows a checkmark for installed tools and gives instructions
-for missing ones; install each prerequisite yourself, then press Enter to retry.
-FFmpeg is optional if you do not need recording. The script does not install
-system packages or invoke `sudo`. It installs Stumble Radio in your user `uv`
-environment. On macOS, use [Homebrew](https://brew.sh) to install missing tools.
-Then run `stumble-radio` in a terminal.
+When done,  run `stumble-radio` in a terminal.
+
 Windows users need WSL with working audio. See the
 [getting started guide](docs/getting-started.md) for requirements and manual
 installation methods.
