@@ -81,6 +81,29 @@ async def test_save_restore_and_invalid_settings_fallback(db, tmp_path):
 
 
 @pytest.mark.parametrize("width,height", [(80, 28), (120, 40)])
+async def test_automatic_leveling_setting_persists_and_reports_on_status(db, tmp_path, width, height):
+    player = FakePlayer()
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
+    async with app.run_test(size=(width, height)) as pilot:
+        await pilot.press("e")
+        await pilot.pause()
+        app.screen.query_one("#eq-gain", Input).value = "6"
+        app.screen.query_one("#eq-auto-level", Checkbox).value = True
+        await eventually(pilot, lambda: player.equalizer.auto_level and player.equalizer.gain_db == 6)
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+        assert EqualizerSettings.restore(json.loads(db.metadata("equalizer_v1"))).auto_level
+        player.auto_level_state = "active"
+        player.auto_level_correction_db = 4.2
+        app.play_state = "PLAYING"
+        app.update_status()
+        status = str(app.query_one("#status", Static).content)
+        assert "Auto +4.2 dB" in status
+        assert "−17 LUFS" in status
+        assert len(status) <= width
+
+
+@pytest.mark.parametrize("width,height", [(80, 28), (120, 40)])
 async def test_invalid_fields_filter_failure_and_save_failure_keep_draft(db, tmp_path, monkeypatch, width, height):
     player = FakePlayer()
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)

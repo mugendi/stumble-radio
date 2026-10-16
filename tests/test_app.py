@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 from textual.widgets import Button, DataTable, Input, Select, Static
 
-from stumble_radio.app import StumbleRadio
+from stumble_radio.app import StumbleRadio, restore_volume
 from stumble_radio.discovery import POOL_MODES, DiscoverySettings
 from stumble_radio.equalizer import EqualizerSettings
 from stumble_radio.models import Search
@@ -19,6 +19,14 @@ from stumble_radio.screens import (
     StationPicker,
 )
 from stumble_radio.tracks import Track
+
+
+def test_master_volume_setting_restore_validation():
+    assert restore_volume("") == 65
+    assert restore_volume('{"version":1,"value":80}') == 80
+    for value in ('{"version":1,"value":101}', '{"version":true,"value":80}', "null", "bad"):
+        with pytest.raises((ValueError, TypeError)):
+            restore_volume(value)
 
 
 @pytest.fixture(autouse=True)
@@ -40,10 +48,16 @@ class FakePlayer:
         self.position = 1.0
         self.rms = -20
         self.volumes = []
+        self.output_volume = 65
         self.equalizer = EqualizerSettings()
+        self.auto_level_state = "off"
+        self.auto_level_correction_db = 0.0
 
     async def set_equalizer(self, settings):
         self.equalizer = settings
+
+    async def update_auto_level(self):
+        pass
 
     async def play(self, station):
         self.station = station

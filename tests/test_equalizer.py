@@ -16,6 +16,7 @@ from stumble_radio.player import METER_FILTER, Player, PlayerError
     {"bands": (0, -13, 0, 0, 0)}, {"bands": (float("nan"), 0, 0, 0, 0)},
     {"bands": (True, 0, 0, 0, 0)}, {"gain_db": -1}, {"gain_db": 13},
     {"gain_db": float("inf")}, {"gain_db": True}, {"enabled": "true"},
+    {"auto_level": "true"},
 ])
 def test_equalizer_validates_settings(values):
     with pytest.raises(ValueError):
@@ -23,7 +24,8 @@ def test_equalizer_validates_settings(values):
 
 
 def test_presets_bypass_reset_and_snapshot():
-    flat = EqualizerSettings()
+    assert EqualizerSettings().auto_level
+    flat = EqualizerSettings(auto_level=False)
     assert not flat.active and flat.filter_graph() == "" and flat.preset == "Flat"
     for name, bands in PRESETS.items():
         settings = EqualizerSettings(bands, 6)
@@ -32,11 +34,19 @@ def test_presets_bypass_reset_and_snapshot():
         assert not replace(settings, enabled=False).active
         assert replace(settings, enabled=False).filter_graph() == ""
     assert EqualizerSettings((1, 0, 0, 0, 0)).preset == "Custom"
-    graph = EqualizerSettings(PRESETS["Bass boost"], 12).filter_graph()
+    graph = EqualizerSettings(PRESETS["Bass boost"], 12, auto_level=False).filter_graph()
     assert graph.startswith("aformat=sample_fmts=fltp,")
     assert [f"equalizer=f={hz}:" in graph for hz in BAND_FREQUENCIES] == [True] * 5
     assert graph.index("equalizer") < graph.index("volume=12dB") < graph.index("alimiter=")
     assert "level=false" in graph and "0.891250938" in graph
+    automatic = EqualizerSettings(gain_db=6, auto_level=True)
+    assert automatic.active and automatic.target_lufs == -17
+    graph = automatic.filter_graph()
+    assert "ebur128=metadata=1:framelog=quiet" in graph
+    assert "volume@stumble_auto=-12dB" in graph
+    assert graph.index("ebur128=") < graph.index("volume@stumble_auto") < graph.index("alimiter=")
+    legacy = {"version": 1, "bands": [0] * 5, "gain_db": 0, "enabled": True}
+    assert EqualizerSettings.restore(legacy).auto_level
     for data in (None, [], {}, {"version": True}, {"version": 2}):
         with pytest.raises(ValueError):
             EqualizerSettings.restore(data)
@@ -79,6 +89,72 @@ async def test_unchanged_saved_effects_can_be_restored_without_starting_or_probi
     assert player.equalizer == original and player.process is None
 
 
+async def test_automatic_leveler_slews_freezes_on_silence_and_ignores_repeated_samples(tmp_path, monkeypatch):
+    player = Player(tmp_path)
+    player.writer = Writer()
+    player.equalizer = EqualizerSettings(gain_db=6, auto_level=True)
+    player._reset_auto_level()
+    player.auto_level_started_at = 0
+    player.auto_level_last_update = 3
+    player.auto_level_correction_db = -12
+    player.auto_level_last_position = None
+    commands = []
+    sample = {"position": 4.0, "loudness": -35.0}
+
+    async def command(*args):
+        commands.append(args)
+        if args[:2] == ("get_property", "time-pos"):
+            return sample["position"]
+        if args[:2] == ("get_property", "af-metadata/stumble_eq"):
+            return {"lavfi.r128.S": str(sample["loudness"])}
+
+    monkeypatch.setattr("stumble_radio.player.time.monotonic", lambda: 3.5)
+    player.command = command
+    await player.update_auto_level()
+    assert player.auto_level_target_lufs == -17
+    assert player.auto_level_correction_db == -11
+    assert commands[-1] == ("af-command", "stumble_eq", "volume", "-11.0dB", "volume@stumble_auto")
+    count = sum(command[0] == "af-command" for command in commands)
+    await player.update_auto_level()
+    assert sum(command[0] == "af-command" for command in commands) == count
+    sample.update(position=4.5, loudness=-60)
+    await player.update_auto_level()
+    assert player.auto_level_correction_db == -11
+    assert player.auto_level_state == "waiting"
+
+
+async def test_automatic_leveler_failure_restores_manual_graph_and_warns_once(tmp_path, monkeypatch):
+    player = Player(tmp_path)
+    player.writer = Writer()
+    player.equalizer = EqualizerSettings(PRESETS["Speech"], 4, auto_level=True)
+    player.filter_settings = player.equalizer
+    player._reset_auto_level()
+    player.auto_level_started_at = 0
+    player.auto_level_last_position = None
+    player.auto_level_last_update = 3
+    calls = []
+
+    async def command(*args):
+        calls.append(args)
+        if args == ("get_property", "time-pos"):
+            return 4.0
+        if args == ("get_property", "af-metadata/stumble_eq"):
+            return {"lavfi.r128.S": "-30"}
+        if args[0] == "af-command":
+            raise PlayerError("gain command rejected")
+
+    monkeypatch.setattr("stumble_radio.player.time.monotonic", lambda: 3.5)
+    player.command = command
+    await player.update_auto_level()
+    await player.update_auto_level()
+    assert player.auto_level_state == "unavailable"
+    assert player.auto_level_disabled_for_session
+    assert player.filter_settings.auto_level is False
+    assert any(c[:2] == ("af", "set") and "equalizer=f=250" in c[2] for c in calls)
+    assert (await player.events.get())["event"] == "equalizer-error"
+    assert player.events.empty()
+
+
 async def test_filter_rejection_restores_previous_sound_and_unsupported_build_is_rejected(tmp_path):
     player = Player(tmp_path)
     player.effects_supported = True
@@ -110,7 +186,7 @@ async def test_staged_effects_survive_restart_and_unsupported_saved_effects_do_n
 ):
     player = Player(tmp_path)
     player.effects_supported = True
-    settings = EqualizerSettings(PRESETS["Speech"], 4)
+    settings = EqualizerSettings(PRESETS["Speech"], 4, auto_level=False)
     await player.set_equalizer(settings)
     commands = []
 
@@ -123,11 +199,11 @@ async def test_staged_effects_survive_restart_and_unsupported_saved_effects_do_n
     monkeypatch.setattr(player, "start", start)
     monkeypatch.setattr(player, "command", command)
     for _ in range(2):
-        player.filter_settings = EqualizerSettings()
+        player.filter_settings = EqualizerSettings(auto_level=False)
         await player.play(station)
         assert player.equalizer == settings
     assert sum(command[:2] == ("af", "add") for command in commands) == 2
-    player.filter_settings = EqualizerSettings()
+    player.filter_settings = EqualizerSettings(auto_level=False)
     player.effects_supported = False
     await player.play(station)
     assert player.station == station and not player.equalizer.active
@@ -190,11 +266,11 @@ async def test_real_filter_chain_frequency_response_gain_and_peak_limiting():
         values = values[2400:-2400]
         return math.sqrt(sum(v * v for v in values) / len(values)), max(abs(v) for v in values)
 
-    flat = EqualizerSettings()
+    flat = EqualizerSettings(auto_level=False)
     reference, _ = await samples(flat)
     boosted, _ = await samples(replace(flat, gain_db=6))
     assert boosted / reference == pytest.approx(10 ** (6 / 20), rel=0.02)
-    bass = EqualizerSettings((6, 0, 0, 0, 0))
+    bass = EqualizerSettings((6, 0, 0, 0, 0), auto_level=False)
     bass_reference, _ = await samples(flat, 60)
     bass_rms, _ = await samples(bass, 60)
     treble_rms, _ = await samples(bass, 12000)
