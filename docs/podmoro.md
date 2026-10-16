@@ -2,7 +2,7 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
 ![Running Classic focus session with pause, stop, skip, extend, Quiet, snooze and dismiss controls](images/podmoro-session.png)
 
@@ -94,7 +94,9 @@ session rather than racing through overdue phases and announcements.
 
 ![Voice clips tab with library path, voice volume, command-folder counts, Preview and Rescan controls](images/podmoro-sounds.png)
 
-Copy the folder path shown in your own Voice clips tab. This screenshot has zero clips because none ship with the app; your MP3s will increase the counts.
+Copy the folder path shown in your own Voice clips tab. The counts here reflect
+the demonstration clips loaded for this capture; a fresh installation starts at
+zero because no audio ships with the app, and your MP3s will increase the counts.
 
 ### 1. Open the folders
 
@@ -177,6 +179,11 @@ For example, `shoulders.txt` might contain `Time for a shoulder break.` It suppl
 the displayed caption; it is **not** converted to speech. Captions still appear
 in Quiet mode or while radio is paused. Without a clip, the timer shows the
 category/event label and continues visually.
+
+![Focus session with a scheduled stretch reminder showing its caption](images/podmoro-reminder.png)
+
+Here a stretch reminder fires during a focus session and displays the caption
+from the clip's `.txt` file; this example uses demonstration clips.
 
 ### 5. Rescan and test
 

@@ -2,7 +2,7 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
 ![Radio passport showing listening totals, country and genre diversity, country stamps and top stations](images/journal.png)
 

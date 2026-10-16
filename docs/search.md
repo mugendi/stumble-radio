@@ -2,11 +2,13 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
-![Search bar with a rock-or-blues expression, Kenya filter, votes sort and a Clear button, followed by four matching stations](images/search.png)
+![Search bar with a jazz-or-tarab tag expression, votes sort and a Clear button, followed by four matching stations](images/search.png)
 
-This query requires rock OR blues tags in Kenya. The filter summary explains the smaller result set. Matching starred stations lead the list, followed by the selected Votes sort.
+This query requires the jazz or tarab tag. The filter summary explains the
+smaller result set. Matching starred stations lead the list, followed by the
+selected Votes sort.
 
 Type a query directly into the main search bar. Results update as you type.
 Plain words match **station names, genre/format tags, saved notes, or personal
@@ -165,7 +167,7 @@ Paste the query lines, without the explanatory `#` lines.
 
 ## Search form, errors, online results, and sorting
 
-![Advanced search form containing the same rock-or-blues query and Kenya country filter](images/search-form.png)
+![Advanced search form containing the same jazz-or-tarab tag clause](images/search-form.png)
 
 The form and the bar describe the same query. Applying the form writes every restriction back to the bar; × Clear removes the query and its filters. The form scrolls to reach the remaining fields.
 
@@ -176,10 +178,14 @@ connectors may be normalised, but their meaning stays the same. Editing/removing
 an operator in the bar edits/removes that filter; there are no hidden form filters.
 
 Incomplete quotes, missing values, unmatched parentheses, unsupported operators,
-invalid bitrate ranges, and incomplete coordinates show an inline error. The
-previous valid results remain visible. Online search, Stumble, and Teleport wait
+invalid bitrate ranges, and incomplete coordinates show an inline error. The previous valid results remain visible. Online search, Stumble, and Teleport wait
 until you fix or clear the invalid query. **× Clear** removes the entire query,
 all constraints, and pagination; it keeps the selected library and shuffle mode.
+
+![Search error for an unclosed phrase, with the previous valid results still shown](images/search-error.png)
+
+Here the query `"happy tunes genre:KE` is missing its closing quote; the inline
+error names the problem and keeps the previous results on screen.
 
 The query applies to the **whole cached catalogue before sorting and pagination**,
 not just the page on screen. It also constrains Stumble. Radio Browser does not

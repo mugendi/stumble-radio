@@ -2,9 +2,9 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
-![Country destination Japan and Music-only shuffle mode above the station browser, with Tokyo City Pop playing](images/discovery.png)
+![Landed in Japan with Music-only shuffle mode above the station browser, with Jazz Sakura playing](images/discovery.png)
 
 The destination and shuffle mode stay above the browser. Here the destination is Japan and the next Stumble will use Music-only; the table itself remains your current library.
 
@@ -19,6 +19,11 @@ honor all active search fields. Search-bound Teleport (keeping the complete resu
 set as the destination pool) is not currently supported. If the cache is empty,
 Teleport can discover countries online and cache candidates on arrival.
 The destination remains in the header after landing.
+
+![Teleport mid-spin, with the destination header cycling through countries](images/teleport-spin.png)
+
+During the spin the header cycles through candidate destinations while playback
+stays paused; the app applies only cached, eligible stations.
 
 **Hot/Cold learning** stays entirely in SQLite:
 

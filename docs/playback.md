@@ -2,7 +2,7 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
 ![Previous, pause, next and Record controls, with the active track along the bottom](images/player.png)
 
@@ -49,6 +49,10 @@ Explore, Favourites, History, and Unheard; it remains available on narrow termin
 where the sidebar is hidden. A library change clears filters so saved stations
 are easy to find. The quick picker's text box filters the current page; use the
 main search or advanced filters to search the entire catalogue.
+
+Press **?** for a help overlay with these shortcuts and a few search examples.
+
+![Help overlay with every keyboard shortcut and search examples](images/help.png)
 
 ## Equalizer and gain
 
@@ -100,9 +104,10 @@ player and are unaffected by EQ.
 
 ## Reconnection, internet outages, and dead streams
 
-![WAITING FOR NETWORK playback state and a status message saying the network is checked every five seconds](images/recovery.png)
+![Toast reporting stream silence while the player schedules another frequency](images/recovery.png)
 
-An illustrative recovery state: the station stays selected while network checks wait for connectivity. No station was actually contacted for this capture.
+A staged recovery: the current stream went silent, so the app keeps the station
+selected and tries another frequency. No dead stream was contacted for this capture.
 
 Every station has automatic reconnection, including manually selected stations
 and favourites. If a playing stream ends, disconnects, or stalls, the app retries
@@ -171,6 +176,11 @@ volume for the next playback. Expiry also cancels pending Teleport/recovery work
 so automatic discovery does not start another station after bedtime. Timers are
 session-only and are not restored after restarting the app.
 
+![Sleep countdown active in the sidebar and status line, with fading already under way](images/sleep-fading.png)
+
+While the countdown runs, the sidebar shows the remaining time and fade state,
+and the status line shows when the fade begins.
+
 ## Recording
 
 Press **r** while listening to begin recording. Press **r** again to finish.
@@ -184,6 +194,11 @@ Recordings contain the original audio stream in a **Matroska audio (.mka)**
 container. Stream copying avoids quality loss and works with common radio codecs
 without guessing the correct filename extension. You can play the result in mpv
 or VLC, or remux/convert it with FFmpeg when needed.
+
+![Record in progress with the destination file announced in a toast](images/recording.png)
+
+While recording, the transport button shows **Stop rec** and a toast names the
+file being written; the demo path here is illustrative.
 
 - Recording opens a **separate connection** to the same stream. It uses additional
   network bandwidth; stations with connection limits may reject that connection.
