@@ -20,6 +20,7 @@ class Process:
         self.returncode = None
         self.done = asyncio.Event()
         self.stderr = asyncio.StreamReader()
+        self.stdout = io.BytesIO()
         self.stdin = self
 
     def write(self, value):
@@ -28,6 +29,10 @@ class Process:
 
     async def drain(self):
         pass
+
+    async def communicate(self):
+        self.finish(0)
+        return self.stdout.getvalue(), b""
 
     def finish(self, code):
         if self.returncode is None:
@@ -77,6 +82,15 @@ async def test_ipc_playback_record_switch_and_cleanup(tmp_path, station, monkeyp
     async def spawn(*args, **kwargs):
         process = Process()
         processes.append(process)
+        if args[0] == "mpv" and "--af=help" in args:
+            # The equalizer-support probe spawns a plain mpv without IPC setup.
+            process.stdout = io.BytesIO(
+                b"  horizontal   Apply a simple stereo or multichannel level adjustment.\n"
+                b"  volume        Apply volume.\n  equalizer     Pre-defined equalizer.\n"
+                b"  aformat       Convert the input to a fixed format.\n"
+                b"  alimiter      Lookahead limiter.\n  ebur128       EBUR128 loudness meter.\n"
+            )
+            return process
         if args[0] == "mpv":
             assert "--volume=0" in args
             path = next(a.split("=", 1)[1] for a in args if a.startswith("--input-ipc-server="))

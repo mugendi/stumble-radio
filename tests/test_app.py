@@ -13,6 +13,7 @@ from stumble_radio.models import Search
 from stumble_radio.player import PlayerError
 from stumble_radio.query import format_query, parse_query
 from stumble_radio.screens import (
+    ConfirmScreen,
     JournalScreen,
     LastPlayScreen,
     SearchScreen,
@@ -823,3 +824,41 @@ async def test_history_defaults_to_recent_but_plays_header_sorts_plays(db, stati
         await pilot.click("#stations", offset=(offset, 0))
         await pilot.pause()
         assert app.filters.order == "clickcount" and app.filters.descending
+
+
+async def test_favourite_targets_playing_channel_and_confirms_when_idle(
+    db, tmp_path, station
+):
+    player = FakePlayer()
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        await pilot.pause()
+        assert app.play_state == "PLAYING"
+        await pilot.press("down")
+        await pilot.pause()
+        assert app.selected_station().stationuuid == "two"
+        # While a channel is playing, f favourites what you hear, not the row.
+        await pilot.press("f")
+        await pilot.pause()
+        assert db.favourite_ids() == {station.stationuuid}
+        # Playing and already a favourite: remove needs no confirmation.
+        await pilot.press("f")
+        await pilot.pause()
+        assert db.favourite_ids() == set()
+        # Nothing playing: both saving and removing ask for confirmation.
+        app.current = None
+        app.load_library()
+        await pilot.press("f")
+        await pilot.pause()
+        assert isinstance(app.screen, ConfirmScreen)
+        await pilot.press("escape")
+        await pilot.pause()
+        assert db.favourite_ids() == set()
+        await pilot.press("f")
+        await pilot.pause()
+        assert isinstance(app.screen, ConfirmScreen)
+        await pilot.press("y")
+        await pilot.pause()
+        assert db.favourite_ids() == {app.selected_station().stationuuid}

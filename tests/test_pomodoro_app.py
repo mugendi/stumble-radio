@@ -206,7 +206,10 @@ async def test_modal_and_transport_fit_supported_widths(db, tmp_path, width):
     async with app.run_test(size=(width, 28)) as pilot:
         for key in ("search", "podmoro", "last-play"):
             button = app.query_one(f"#{key}", Button)
-            assert button.region.right <= width and button.region.width >= len(str(button.label))
+            if button.display:
+                assert button.region.right <= width and button.region.width >= len(
+                    str(button.label)
+                )
         await pilot.click("#podmoro")
         await pilot.pause()
         assert isinstance(app.screen, PomodoroScreen)

@@ -13,6 +13,7 @@ async def test_station_right_click_edits_notes_and_search_finds_them(db, tmp_pat
     player = FakePlayer()
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
     async with app.run_test(size=(width, height)) as pilot:
+        await pilot.pause()
         station = app.stations[1]
         await pilot.click("#stations", offset=(15, 2), button=3)
         await pilot.pause()
@@ -50,6 +51,7 @@ async def test_station_left_click_selects_and_plays_without_opening_notes(db, tm
     player = FakePlayer()
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
     async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
         station = app.stations[1]
         await pilot.click("#stations", offset=(15, 2))
         await pilot.pause()
