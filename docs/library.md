@@ -10,8 +10,11 @@ Choose Favourites to see your saved dial. Switching libraries clears search rest
 
 ## Your dial
 
-Highlight a station and press **f** to add or remove a favourite. This acts on the
-highlighted row, which can differ from the playing station. Matching favourites
+Press **f** to favourite the station you are listening to: you can only like
+what you have heard. If nothing is playing, **f** acts on the highlighted row
+instead, but first asks whether the station should really change — this prevents
+accidental favourites and removals. While a channel is playing, favouriting and
+unfavouriting apply to it directly, with no confirmation. Matching favourites
 appear first in station lists, including search results. Sorting the ★ column
 explicitly lets you put them last instead.
 

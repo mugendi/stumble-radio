@@ -31,7 +31,7 @@ station list. `Ctrl+Q` quits even while an input has focus.
 | `e` | Open equalizer, gain and presets |
 | `Space` | Pause/resume; play the selected station if stopped |
 | `n` / `p` | Next/previous station within the visible results page, wrapping at the ends |
-| `f` | Toggle favourite for the **highlighted** station |
+| `f` | Favourite the **playing** channel; if nothing is playing, confirm before acting on the **highlighted** station |
 | `Ctrl+B` | Open the quick tune picker for this results page |
 | `+` / `-` | Raise/lower volume by 5 |
 | `r` | Start or finish recording the **playing** station |
