@@ -31,6 +31,7 @@ from .pomodoro import PHASES, Announcement, Pomodoro, finite
 from .pomodoro_screen import PomodoroScreen
 from .query import format_expression, format_query, parse_query
 from .screens import (
+    ConfirmScreen,
     HelpScreen,
     JournalScreen,
     LastPlayScreen,
@@ -609,6 +610,12 @@ class StumbleRadio(App):
         table = self.query_one(DataTable)
         if table.row_count and table.cursor_row < len(self.stations):
             return self.stations[table.cursor_row]
+        return None
+
+    def playing_channel(self) -> Station | None:
+        """The channel the user has actually heard, or None if nothing is playing."""
+        if self.current and (self.has_played or self.user_paused):
+            return self.current
         return None
 
     def update_details(self) -> None:
@@ -1510,10 +1517,28 @@ class StumbleRadio(App):
 
     @work(group="favourites")
     async def action_favourite(self) -> None:
-        if station := self.selected_station():
-            added = await asyncio.to_thread(self.db.toggle_favourite, station)
-            self.notify(f"{'Saved' if added else 'Removed'} · {station.name}")
-            self.load_library()
+        # You can only like what you have heard: favourite the playing channel;
+        # without playback, ask before acting on the highlighted row.
+        station = self.playing_channel()
+        if station is None:
+            station = self.selected_station()
+            if station is None:
+                self.notify("No station highlighted.", severity="warning")
+                return
+            saving = station.stationuuid not in self.favourites
+            ask = (
+                f"{station.name} is not playing.\n"
+                f"{'Save it to favourites anyway?' if saving else 'Remove it from favourites anyway?'}"
+            )
+            if not await self.push_screen_wait(
+                ConfirmScreen(
+                    "FAVOURITE", ask, confirm="Save" if saving else "Remove"
+                )
+            ):
+                return
+        added = await asyncio.to_thread(self.db.toggle_favourite, station)
+        self.notify(f"{'Saved' if added else 'Removed'} · {station.name}")
+        self.load_library()
 
     @work(group="controls")
     async def action_record(self) -> None:

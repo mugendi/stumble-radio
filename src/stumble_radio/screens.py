@@ -409,7 +409,7 @@ class HelpScreen(ModalScreen):
                 "e         Equalizer, gain and sound presets\n"
                 "Space     Pause / resume\n"
                 "n / p     Next / previous station in this result list\n"
-                "f         Toggle favourite for highlighted station\n"
+                "f         Favourite the playing channel (asks if nothing is playing)\n"
                 "Ctrl+B    Quick tune browser for this page\n"
                 "+ / -     Volume up / down\n"
                 "r         Start / finish a recording\n"
@@ -495,6 +495,33 @@ class SettingsScreen(ModalScreen[DiscoverySettings | None]):
             self.query_one("#settings-error", Static).update(str(error))
             return
         self.dismiss(settings)
+
+
+class ConfirmScreen(ModalScreen[bool | None]):
+    """A yes/no question returned as True (confirmed) or None/False (cancelled)."""
+
+    BINDINGS: ClassVar = [("escape", "no", "Cancel"), ("y", "yes", "Yes")]
+
+    def __init__(self, title: str, body: str, confirm: str = "Yes"):
+        super().__init__()
+        self.title_text, self.body, self.confirm_label = title, body, confirm
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="confirm-dialog"):
+            yield Label(self.title_text, classes="dialog-title")
+            yield Static(self.body, markup=False)
+            with Horizontal(classes="dialog-actions"):
+                yield Button(self.confirm_label, variant="primary", id="confirm-yes")
+                yield Button("Cancel", id="confirm-no")
+
+    def action_no(self) -> None:
+        self.dismiss(False)
+
+    def action_yes(self) -> None:
+        self.dismiss(True)
+
+    def on_button_pressed(self, event: Button.Pressed):
+        self.dismiss(event.button.id == "confirm-yes")
 
 
 class SleepScreen(ModalScreen[tuple[float, float] | None]):

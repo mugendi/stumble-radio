@@ -5,7 +5,7 @@ Screen { background: #10161e; color: #dfe7ef; }
 #tagline { height: 1; color: #8a9bac; }
 #destination-line { width: auto; max-width: 40%; height: 2; color: #eebc78; content-align: right top; text-align: right; }
 #transport { width: 100%; height: auto; min-height: 3; padding: 0 2; margin-bottom: 1; }
-#transport .media-control { width: 5; min-width: 5; padding: 0; text-style: bold; }
+#transport .media-control { width: 6; min-width: 6; padding: 0; text-style: bold; }
 #transport-primary { width: auto; height: 3; }
 #transport-extra { width: 1fr; height: 3; }
 #transport-extra .transport-spacer { width: 1fr; height: 3; }
@@ -55,6 +55,7 @@ ModalScreen { align: center middle; background: #000000 65%; }
 ModalScreen Label { width: 1fr; text-wrap: wrap; }
 ModalScreen Checkbox { width: 1fr; height: auto; text-wrap: wrap; }
 #search-dialog { width: 76; max-width: 95%; height: 90%; padding: 1 2; border: round #68ddc4; background: #10161e; }
+#confirm-dialog { width: 60; max-width: 95%; height: auto; padding: 1 2; border: round #68ddc4; background: #10161e; }
 .dialog-title { height: 2; text-style: bold; color: #68ddc4; }
 .muted { height: auto; color: #8a9bac; margin-bottom: 1; }
 #search-fields { height: 1fr; }
