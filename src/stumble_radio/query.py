@@ -111,7 +111,8 @@ def search_from_tokens(tokens: list[str]) -> Search:
             }.get(value.casefold(), value.casefold())
             if order not in SORTS:
                 raise ValueError(
-                    "Sort by plays, votes, name, country, genre, bitrate, favourites or recent."
+                    "Sort by plays, votes, name, country, genre, bitrate, favourites, "
+                    "recent or listen."
                 )
             values["order"] = order
         elif key == "direction":

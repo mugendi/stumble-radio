@@ -391,6 +391,16 @@ class Database:
         where, params = self._where(search, mode)
         sort_value = f"s.{search.order}"
         order = f"s.sort_value {'DESC' if search.descending else 'ASC'},s.stationuuid"
+        if search.order == "listen":
+            # Listen time is grouped by URL like favourites themselves; it is only
+            # meaningful in the favourites library, other modes keep the default.
+            sort_value = (
+                "(SELECT coalesce(sum(a2.listened_seconds),0) FROM affinity a2 "
+                "JOIN stations m2 ON a2.stationuuid=m2.stationuuid "
+                "WHERE m2.stationuuid=s.stationuuid OR (s.url!='' AND m2.url=s.url))"
+                if mode == "favourites"
+                else "s.clickcount"
+            )
         if search.order in {"name", "country", "tags"}:
             sort_value += "_fold"
         if search.order == "favourite":
@@ -425,6 +435,30 @@ class Database:
                 for row in db.execute(
                     "SELECT s.stationuuid FROM stations s WHERE " + self._url_members("favourites")
                 )
+            }
+
+    def listen_totals(self, stations: list[Station]) -> dict[str, float]:
+        """Accumulated listen seconds per URL-group for the given (favourite) rows."""
+        uuids = list(dict.fromkeys(s.stationuuid for s in stations))
+        urls = list(dict.fromkeys(s.url for s in stations if s.url))
+        if not uuids:
+            return {}
+        id_ph = ",".join("?" for _ in uuids)
+        url_sql = ""
+        params: list = [*uuids]
+        if urls:
+            url_sql = f" OR (s.url!='' AND s.url IN ({','.join('?' for _ in urls)}))"
+            params += urls
+        with self.connect() as db:
+            return {
+                row["stream_key"]: row["seconds"]
+                for row in db.execute(
+                    "SELECT coalesce(nullif(s.url,''),s.stationuuid) stream_key, "
+                    "coalesce(sum(b.listened_seconds),0) seconds FROM stations s "
+                    "LEFT JOIN affinity b USING(stationuuid) "
+                    f"WHERE s.stationuuid IN ({id_ph}){url_sql} GROUP BY stream_key",
+                    params,
+                ).fetchall()
             }
 
     def toggle_favourite(self, station: Station) -> bool:

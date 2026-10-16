@@ -73,6 +73,7 @@ SORTS = {
     "tags": "Genre / format",
     "favourite": "Favourites",
     "recent": "Recently played",
+    "listen": "Listen time",
 }
 
 
@@ -120,7 +121,7 @@ class Search:
             "tagList": self.tags,
             "codec": self.codec,
             "bitrateMin": self.bitrate_min,
-            "order": {"favourite": "clickcount", "recent": "clicktimestamp"}.get(
+            "order": {"favourite": "clickcount", "recent": "clicktimestamp", "listen": "clickcount"}.get(
                 self.order, self.order
             ),
             "reverse": str(self.descending).lower(),

@@ -55,6 +55,20 @@ def restore_volume(value: str) -> int:
     return saved["value"]
 
 
+def listen_label(seconds: float) -> str:
+    """Compact listen durations like "45 min", "35 hrs", "5 wks" or "6k hrs"."""
+    total, minutes = max(0, int(seconds)), 0
+    if total < 3600:
+        minutes, _ = divmod(total, 60)
+        return f"{minutes or 1} min"
+    hours = total // 3600
+    if hours < 100:
+        return f"{hours} hrs"
+    if hours < 1000:
+        return f"{max(1, hours // 168)} wks"
+    return f"{hours // 1000 or 1}k hrs"
+
+
 class StationTable(DataTable):
     class Resized(Message):
         pass
@@ -84,6 +98,7 @@ class StumbleRadio(App):
     TABLE_COLUMNS: ClassVar = (
         ("favourite", "Now / ★"),
         ("name", "Station"),
+        ("listen", "Listen"),
         ("country", "Country"),
         ("tags", "Genre / format"),
         ("bitrate", "kbps"),
@@ -140,6 +155,7 @@ class StumbleRadio(App):
         self.total = 0
         self.offset = 0
         self.favourites: set[str] = set()
+        self.listen_totals: dict[str, float] = {}
         self.current: Station | None = None
         self.notes_hint_count = 0
         self.play_state = "READY"
@@ -218,9 +234,9 @@ class StumbleRadio(App):
                 yield Button("Record", id="record")
                 yield Button("Search", id="search")
                 yield Button(
-                    "Last Play",
-                    id="last-play",
-                    tooltip="Search songs and artists heard (l / Ctrl+L)",
+                    "Quick tune",
+                    id="picker",
+                    tooltip="Quick tune: pick from this page (Ctrl+B)",
                 )
             with HorizontalGroup(id="transport-extra"):
                 yield Static("", id="audio-meter", classes="transport-spacer", markup=False)
@@ -245,7 +261,6 @@ class StumbleRadio(App):
                 )
                 yield Static("Select a station to see its details.", id="detail", markup=False)
                 yield Static("Sleep timer · off", id="timer")
-                yield Button("Quick tune", id="picker")
             with Vertical(id="browser"):
                 with Horizontal(id="search-toolbar"):
                     yield Input(
@@ -467,7 +482,13 @@ class StumbleRadio(App):
         error.display = bool(self.query_error)
 
     def default_filters(self):
-        return Search(order="recent" if self.mode == "history" else "clickcount")
+        return Search(
+            order=(
+                "recent" if self.mode == "history"
+                else "listen" if self.mode == "favourites"
+                else "clickcount"
+            )
+        )
 
     def action_clear_filters(self):
         self.filters, self.offset = self.default_filters(), 0
@@ -524,6 +545,10 @@ class StumbleRadio(App):
         old_station = self.selected_station()
         self.stations, self.total, self.favourites = stations, total, favourites
         self.catalogue_count = count
+        if mode == "favourites":
+            self.listen_totals = await asyncio.to_thread(self.db.listen_totals, stations)
+        else:
+            self.listen_totals = {}
         self.update_discovery_line()
         self.render_station_table(old_station)
         start, end = (offset + 1 if total else 0), min(offset + PAGE_SIZE, total)
@@ -544,6 +569,8 @@ class StumbleRadio(App):
         scroll = table.scroll_offset
         available = max(20, table.size.width - 1)
         widths = {"favourite": 3, "name": 0, "bitrate": 5}
+        if self.mode == "favourites":
+            widths["listen"] = 11
         for key, threshold, width in (
             ("country", 56, 18), ("tags", 86, 24),
             ("votes", 110, 7), ("clickcount", 128, 9),
@@ -576,8 +603,19 @@ class StumbleRadio(App):
                 marker.stylize("bold #68ddc4")
             if playing and favourite:
                 marker.append(" ★", style="bold #eebc78")
+            seconds = self.listen_totals.get(station.url or station.stationuuid, 0)
+            if (
+                playing and self.listen_id is not None
+                and self.play_state == "PLAYING" and not self.signal_silent
+            ):
+                seconds += max(0, time.monotonic() - self.accounted_at)
+            badge = Text(
+                f"[♪ {listen_label(seconds)}]" if favourite and seconds > 0 else "",
+                style="bold #eebc78", no_wrap=True,
+            )
             values = {
-                "favourite": marker, "name": station.name, "country": station.country,
+                "favourite": marker, "name": station.name, "listen": badge,
+                "country": station.country,
                 "tags": station.tags, "bitrate": str(station.bitrate or "—"),
                 "votes": str(station.votes), "clickcount": str(station.clickcount),
             }
@@ -719,7 +757,6 @@ class StumbleRadio(App):
             "record": self.action_record,
             "search": self.action_search,
             "podmoro": self.action_podmoro,
-            "last-play": self.action_last_play,
             "picker": self.action_picker,
             "page-back": self.action_previous_page,
             "page-next": self.action_next_page,

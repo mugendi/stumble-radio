@@ -139,7 +139,7 @@ ModalScreen Checkbox { width: 1fr; height: auto; text-wrap: wrap; }
 .narrow #transport Button.media-control { width: 5; min-width: 5; padding: 0; }
 .narrow Footer { padding: 0 1; }
 .narrow #search { display: none; }
-.compact #last-play, .compact #audio-meter, .compact #destination-line { display: none; }
+.compact #picker, .compact #audio-meter, .compact #destination-line { display: none; }
 .compact #transport-extra { align-horizontal: right; }
 .tiny #record { display: none; }
 .tiny #transport Button.media-control { width: 5; min-width: 5; }
