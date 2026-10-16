@@ -42,6 +42,17 @@ from .screens import (
 from .tracks import track_from_metadata
 
 
+def restore_volume(value: str) -> int:
+    if not value:
+        return 65
+    saved = json.loads(value)
+    if (not isinstance(saved, dict) or type(saved.get("version")) is not int
+            or saved["version"] != 1 or type(saved.get("value")) is not int
+            or not 0 <= saved["value"] <= 100):
+        raise ValueError("Invalid saved volume")
+    return saved["value"]
+
+
 class StationTable(DataTable):
     class NotesRequested(Message):
         def __init__(self, stationuuid: str):
@@ -257,6 +268,12 @@ class StumbleRadio(App):
             self.query_one(DataTable).add_column(label + "  ", key=key)
         self.query_one(DataTable).focus()
         self.default_screen.set_class(self.size.width < 95, "narrow")
+        saved_volume = await asyncio.to_thread(self.db.metadata, "volume_v1")
+        try:
+            self.volume_value = restore_volume(saved_volume)
+            self.player.output_volume = self.volume_value
+        except (ValueError, TypeError, KeyError):
+            self.notify("Saved volume was invalid; using 65%.", severity="warning")
         saved_equalizer = await asyncio.to_thread(self.db.metadata, "equalizer_v1")
         try:
             self.player.equalizer = (
@@ -291,6 +308,7 @@ class StumbleRadio(App):
         self.update_pomodoro_line()
         self.set_interval(1, self.tick)
         self.set_interval(0.1, self.sample_audio_meter)
+        self.set_interval(0.5, self.update_automatic_level)
         self.set_interval(3600, self.prune_track_history)
         self.consume_player_events()
         if not self.offline:
@@ -328,9 +346,41 @@ class StumbleRadio(App):
         if self.sleep_until:
             seconds = max(0, int(self.sleep_until - time.monotonic()))
             timer = f" · sleep {seconds // 60:02}:{seconds % 60:02}"
-        self.query_one("#status", Static).update(
-            f"{self.catalogue_count:,} cached · {self.connection_state or self.sync_state} · vol {self.volume_value:.0f}%{timer}"
-        )
+        left = f"{self.catalogue_count:,} cached · {self.connection_state or self.sync_state}"
+        suffix = f" · vol {self.volume_value:.0f}%{timer}"
+        level_text = "Auto off"
+        settings = self.player.equalizer
+        if settings.auto_level and not settings.enabled:
+            level_text = "Auto bypassed"
+        elif settings.auto_level:
+            state = self.player.auto_level_state
+            target = f"{settings.target_lufs} LUFS".replace("-", "−")
+            correction = f"{self.player.auto_level_correction_db:+.1f} dB".replace("-", "−")
+            if self.play_state != "PLAYING":
+                text = f"Auto paused · {correction} · {target}"
+            elif state == "active" or state == "limited":
+                if state == "limited":
+                    text = f"Auto limited · {correction} · {target}"
+                else:
+                    text = f"Auto {correction} · {target}"
+            else:
+                labels = {"measuring": "measuring", "waiting": "waiting for signal", "unavailable": "unavailable", "off": "measuring"}
+                if state == "unavailable":
+                    text = f"Auto unavailable · {target}"
+                else:
+                    text = f"Auto {labels.get(state, state)} · {correction} · {target}"
+            level_text = text
+        suffix += " · " + level_text
+        # Keep volume, sleep, and leveling feedback visible by shortening directory status first.
+        available = max(18, self.size.width - 6)
+        if len(left) + len(suffix) > available:
+            left = left[:max(1, available - len(suffix) - 1)].rstrip() + "…"
+        self.query_one("#status", Static).update(left + suffix)
+
+    async def update_automatic_level(self) -> None:
+        if self.play_state == "PLAYING":
+            await self.player.update_auto_level()
+            self.update_status()
 
     def update_discovery_line(self):
         self.query_one("#discovery-line", Static).update(
@@ -1439,6 +1489,13 @@ class StumbleRadio(App):
     async def change_volume(self, delta: int) -> None:
         self.volume_value = max(0, min(100, self.volume_value + delta))
         await self.apply_volume()
+        try:
+            await asyncio.to_thread(
+                self.db.set_metadata, "volume_v1",
+                json.dumps({"version": 1, "value": self.volume_value}),
+            )
+        except (sqlite3.Error, OSError):
+            self.notify("Could not save volume setting.", severity="warning")
         self.update_status()
 
     def action_volume_up(self) -> None:

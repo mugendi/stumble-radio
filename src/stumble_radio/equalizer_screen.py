@@ -27,6 +27,10 @@ class EqualizerScreen(ModalScreen):
             yield Label("Equalizer & gain", classes="dialog-title")
             with Horizontal(id="eq-options"):
                 yield Checkbox("Bypass", not self.original.enabled, id="eq-bypass")
+                yield Checkbox(
+                    "Auto level", self.original.auto_level, id="eq-auto-level",
+                    tooltip="Balance station loudness toward the target set by gain",
+                )
                 yield Select(
                     [(name, name) for name in (*PRESETS, "Custom")],
                     value=self.original.preset, allow_blank=False, id="eq-preset",
@@ -49,7 +53,7 @@ class EqualizerScreen(ModalScreen):
                     yield Button("+", id="eq-plus-gain", tooltip="Raise gain by 1 dB")
             yield Static(
                 "Bands −12…+12 dB · Gain 0…+12 dB\n"
-                "Live preview · peak limiting is automatic; loud streams may sound compressed.",
+                "Auto maps Gain to −23…−11 LUFS · limiter protects peaks.",
                 classes="muted", markup=False,
             )
             yield Static("", id="eq-error", markup=False)
@@ -68,7 +72,10 @@ class EqualizerScreen(ModalScreen):
             gain = int(self.query_one("#eq-gain", Input).value)
         except ValueError as error:
             raise ValueError("Use whole numbers: bands −12…+12 dB; gain 0…+12 dB.") from error
-        return EqualizerSettings(bands, gain, not self.query_one("#eq-bypass", Checkbox).value)
+        return EqualizerSettings(
+            bands, gain, not self.query_one("#eq-bypass", Checkbox).value,
+            self.query_one("#eq-auto-level", Checkbox).value,
+        )
 
     def feedback(self, message: str = ""):
         error = self.query_one("#eq-error", Static)
@@ -140,6 +147,7 @@ class EqualizerScreen(ModalScreen):
             await self.action_cancel()
         elif key == "eq-reset":
             self.query_one("#eq-bypass", Checkbox).value = False
+            self.query_one("#eq-auto-level", Checkbox).value = False
             self.query_one("#eq-gain", Input).value = "0"
             for index in range(5):
                 self.query_one(f"#eq-band-{index}", Input).value = "0"

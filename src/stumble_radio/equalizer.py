@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 BAND_FREQUENCIES = (60, 250, 1000, 4000, 12000)
+BASE_TARGET_LUFS = -23
 PRESETS = {
     "Flat": (0, 0, 0, 0, 0),
     "Bass boost": (6, 3, 0, 0, 0),
@@ -19,10 +20,13 @@ class EqualizerSettings:
     bands: tuple[int, ...] = (0, 0, 0, 0, 0)
     gain_db: int = 0
     enabled: bool = True
+    auto_level: bool = True
 
     def __post_init__(self):
         if type(self.enabled) is not bool:
             raise ValueError("Equalizer enabled must be true or false.")
+        if type(self.auto_level) is not bool:
+            raise ValueError("Automatic leveling must be true or false.")
         if not isinstance(self.bands, (list, tuple)) or len(self.bands) != 5:
             raise ValueError("Set all five equalizer bands.")
         if any(type(value) is not int or not -12 <= value <= 12 for value in self.bands):
@@ -33,7 +37,11 @@ class EqualizerSettings:
 
     @property
     def active(self) -> bool:
-        return self.enabled and bool(self.gain_db or any(self.bands))
+        return self.enabled and bool(self.auto_level or self.gain_db or any(self.bands))
+
+    @property
+    def target_lufs(self) -> int:
+        return BASE_TARGET_LUFS + self.gain_db
 
     @property
     def preset(self) -> str:
@@ -47,18 +55,20 @@ class EqualizerSettings:
             f"equalizer=f={hz}:t=o:w=2:g={gain}:precision=f32"
             for hz, gain in zip(BAND_FREQUENCIES, self.bands)
         )
-        filters.extend((
-            f"volume={self.gain_db}dB:precision=float",
-            "alimiter=limit=0.891250938:level=false:latency=true",
-        ))
+        if self.auto_level:
+            filters.extend(("ebur128=metadata=1:framelog=quiet", "volume@stumble_auto=-12dB:precision=float"))
+        else:
+            filters.append(f"volume={self.gain_db}dB:precision=float")
+        filters.append("alimiter=limit=0.891250938:level=false:latency=true")
         return ",".join(filters)
 
     def snapshot(self) -> dict:
         return {"version": 1, "bands": list(self.bands), "gain_db": self.gain_db,
-                "enabled": self.enabled}
+                "enabled": self.enabled, "auto_level": self.auto_level}
 
     @classmethod
     def restore(cls, data: dict) -> "EqualizerSettings":
         if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] != 1:
             raise ValueError("Unsupported equalizer settings version.")
-        return cls(bands=data["bands"], gain_db=data["gain_db"], enabled=data["enabled"])
+        return cls(bands=data["bands"], gain_db=data["gain_db"], enabled=data["enabled"],
+                   auto_level=data.get("auto_level", True))

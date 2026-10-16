@@ -38,7 +38,8 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 ### Listen, record and drift off
 
 - Play/pause, previous/next station, volume controls, and broadcaster song metadata.
-- Tune a five-band equalizer and up to +12 dB gain, with presets, live preview and saved settings.
+- Tune a five-band equalizer and up to +12 dB gain, with presets, live preview and saved settings; automatic loudness leveling starts enabled by default.
+- Save and restore your master volume automatically between sessions.
 - Record the original audio while continuing to browse or pausing your listening.
 - Retry interrupted streams and resume when the internet comes back.
 - Automatically skip dead or silent stations during random discovery.
