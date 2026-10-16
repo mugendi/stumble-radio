@@ -85,7 +85,7 @@ voice volume remain independent. Master volume is saved automatically and
 restored on the next launch (65% on first use). Recordings retain the original stream, and
 silence detection and the audio meter measure the source before EQ and gain.
 Automatic leveling measures three-second short-term loudness after EQ, starts each
-station at −12 dB correction, and moves gradually to avoid sudden jumps. It freezes
+station at 0 dB correction, and moves gradually to avoid sudden jumps. It freezes
 on silence and while playback is paused or buffering. Its correction is limited to
 −36…+24 dB. The target is a practical shared listening level, not broadcast
 normalization: stations with extreme loudness differences may reach the correction

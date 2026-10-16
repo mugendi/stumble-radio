@@ -2,7 +2,7 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
 ![Favourites library with three starred stations](images/favourites.png)
 
@@ -35,9 +35,14 @@ Each page holds up to 100 distinct streams. Use **‹ Page / Page ›** or **[ /
 to browse. Changing libraries clears the search so a previous filter does not hide
 your saved stations. Playback continues while you browse.
 
+![History library with the most played stations leading, sorted by Plays (24h)](images/history.png)
+
+History starts with recently played stations grouped favourites first; clicking
+a header changes the order. Here it is sorted by Plays (24h).
+
 ## Quick tune
 
-![Compact station picker with a text input and favourite station choices](images/quick-tune.png)
+![Quick tune picker with a filter input over station choices from the current page](images/quick-tune.png)
 
 Ctrl+B opens a small picker for the current results page. Type to narrow its choices and press Enter to play one.
 
@@ -48,7 +53,7 @@ Quick tune searches the current page. Use the [main search bar](search.md) to se
 Right-click a station to open its notes, or highlight it and press **i**. **Enter** on the station list
 still plays the highlighted station; opening notes leaves playback running.
 
-![Station notes dialog with searchable mood notes and personal tags for Nairobi Jazz](images/station-notes.png)
+![Station notes dialog with searchable mood notes and personal tags for Kameme FM](images/station-notes.png)
 
 The right-click tooltip appears for the first three stations you tune after each
 launch, then stays hidden for the rest of that session. Reconnecting the same

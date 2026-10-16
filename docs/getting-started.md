@@ -2,7 +2,7 @@
 
 [← Stumble Radio](../README.md)
 
-Screenshots show the actual interface with fictional stations and demonstration listening data.
+Screenshots show the actual interface with real stations and demonstration listening data.
 
 ![Stumble Radio playing a station, with transport controls, station browser and now-playing information](images/player.png)
 
@@ -45,6 +45,8 @@ are hidden. Keyboard shortcuts still work. The volume and automatic-leveling
 status stay below the playing station; the LUFS target and total result count
 are omitted when necessary, with the full status available on hover. Resizing
 preserves your playlist selection and scroll position.
+
+![Compact 44-column layout: sidebar and duplicate toolbar shortcuts hidden, transport controls and table remaining usable](images/compact.png)
 
 ## Advanced installation
 
