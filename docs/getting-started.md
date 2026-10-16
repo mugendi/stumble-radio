@@ -17,9 +17,13 @@ its dependencies with one command:
 curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
 ```
 
-The installer installs `mpv`, FFmpeg, `uv`, and Stumble Radio. It uses `sudo`
-for Linux system packages when needed. On macOS, install
-[Homebrew](https://brew.sh) first. After installation, run `stumble-radio`.
+The installer checks `curl`, `tar`, `mpv`, FFmpeg, and `uv`, explains each
+dependency, and marks installed tools with a checkmark. For a missing tool it
+prints installation instructions and waits while you install it, then checks
+again. FFmpeg can be skipped if you do not need recording. The installer never
+installs system packages or invokes `sudo`; it installs the app in your user
+`uv` environment. On macOS, use [Homebrew](https://brew.sh) to install missing
+tools. After installation, run `stumble-radio`.
 
 ## Requirements
 

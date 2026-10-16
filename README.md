@@ -118,9 +118,13 @@ Install Stumble Radio and its audio dependencies with one command:
 curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
 ```
 
-The installer sets up `mpv`, FFmpeg, Python, and the `stumble-radio` command.
-On Linux it uses `sudo` for system packages; on macOS, install
-[Homebrew](https://brew.sh) first. Then run `stumble-radio` in a terminal.
+The installer checks `curl`, `tar`, `mpv`, FFmpeg, and `uv`, and explains why
+each is needed. It shows a checkmark for installed tools and gives instructions
+for missing ones; install each prerequisite yourself, then press Enter to retry.
+FFmpeg is optional if you do not need recording. The script does not install
+system packages or invoke `sudo`. It installs Stumble Radio in your user `uv`
+environment. On macOS, use [Homebrew](https://brew.sh) to install missing tools.
+Then run `stumble-radio` in a terminal.
 Windows users need WSL with working audio. See the
 [getting started guide](docs/getting-started.md) for requirements and manual
 installation methods.
