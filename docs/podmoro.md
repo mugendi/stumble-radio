@@ -12,9 +12,9 @@ Jump to [sessions and profiles](#sessions-and-profiles), [weekly schedules](#wee
 
 Open **PODMORO** at the right end of the transport row, or press **Ctrl+O**. The modal has four tabs:
 **Session**, **Profiles**, **Schedules**, and **Voice clips**. Its countdown stays
-visible above the station browser when you close the modal. Last Play sits beside
-Search. On narrow terminals, the top controls use two rows so PODMORO and Last
-Play remain reachable, with PODMORO at the right of the second row.
+visible above the station browser when you close the modal, and Quick tune sits
+beside Search. On narrow terminals, the top controls
+use two rows so PODMORO remains reachable at the right of the second row.
 
 The scheduler is **off initially**. The included Classic profile uses 25 minutes
 of focus, a 5-minute short break, and a 15-minute long break after four completed

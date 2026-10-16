@@ -7,7 +7,7 @@ Screenshots show the actual interface with real stations and demonstration liste
 ![Previous, pause, next and Record controls, with the active track along the bottom](images/player.png)
 
 Use the top controls or keyboard shortcuts. The centre media icon switches between Play and Pause; the bottom panel follows the playing station while you browse.
-Last Play sits beside Search, while PODMORO is right aligned. On narrow terminals, PODMORO moves to the right side of the second control row.
+Quick tune sits beside Search, while PODMORO is right aligned; Last Play stays one keypress away with `l` or `Ctrl+L`. On narrow terminals, PODMORO moves to the right side of the second control row.
 
 ## Controls
 
@@ -47,7 +47,8 @@ The transport buttons use **⏮** (previous), **▶** (play/resume), **⏸** (pa
 changes; hover over an icon for its label and shortcut. **Library** cycles through
 Explore, Favourites, History, and Unheard; it remains available on narrow terminals
 where the sidebar is hidden. A library change clears filters so saved stations
-are easy to find. The quick picker's text box filters the current page; use the
+are easy to find. The **Quick tune** button beside **Search** opens the
+quick picker; its text box filters the current page, and you can use the
 main search or advanced filters to search the entire catalogue.
 
 Press **?** for a help overlay with these shortcuts and a few search examples.

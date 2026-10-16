@@ -8,7 +8,7 @@ Screenshots show the actual interface with real stations and demonstration liste
 
 Search an artist, song or station. Each row is a listening occurrence; selecting it tunes the station live. The screenshot uses example plays, not actual broadcast claims.
 
-Press **l**, **Ctrl+L**, or the **Last Play** button. Stumble Radio saves song
+Press **l** or **Ctrl+L** (the footer always shows this binding). Stumble Radio saves song
 metadata as you listen, so you can find which station played a track days or
 months later. Playback continues while the search window is open.
 
