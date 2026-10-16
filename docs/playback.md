@@ -55,6 +55,8 @@ main search or advanced filters to search the entire catalogue.
 Press **e** to open the equalizer. One saved setup applies to
 all stations, including after changing stations, reconnecting, or restarting.
 
+![Equalizer and gain dialog showing Auto level enabled, flat five-band controls, and save options](images/equalizer.png)
+
 - Adjust **60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz** from **−12 to +12 dB**.
 - **Gain / boost** adds **0 to +12 dB**, separately from the normal volume control.
 - **Auto level** is enabled by default and balances stations toward a shared loudness target. Turn it off in the equalizer when you prefer station levels to vary. With it enabled,

@@ -47,6 +47,9 @@ Quick tune searches the current page. Use the [main search bar](search.md) to se
 
 Right-click a station to open its notes, or highlight it and press **i**. **Enter** on the station list
 still plays the highlighted station; opening notes leaves playback running.
+
+![Station notes dialog with searchable mood notes and personal tags for Nairobi Jazz](images/station-notes.png)
+
 The right-click tooltip appears for the first three stations you tune after each
 launch, then stays hidden for the rest of that session. Reconnecting the same
 station does not count toward this limit.
