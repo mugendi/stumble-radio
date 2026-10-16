@@ -8,6 +8,19 @@ Screenshots show the actual interface with fictional stations and demonstration 
 
 The station list is in the centre, details are on the left, and playback stays visible along the bottom.
 
+## Quick install
+
+On supported Linux distributions or macOS with Homebrew, install the player and
+its dependencies with one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
+```
+
+The installer installs `mpv`, FFmpeg, `uv`, and Stumble Radio. It uses `sudo`
+for Linux system packages when needed. On macOS, install
+[Homebrew](https://brew.sh) first. After installation, run `stumble-radio`.
+
 ## Requirements
 
 - Python **3.11 or later**.
@@ -21,7 +34,10 @@ Use a terminal of at least **80 columns × 28 rows**; **110 × 35** gives statio
 details more room. Keyboard and mouse controls both work. Use **Tab / Shift+Tab**
 to move between controls; dialogs and long tables can be scrolled.
 
-Install the audio tools with your system's package manager:
+## Advanced installation
+
+Use these manual steps if you prefer to manage dependencies and the Python
+environment yourself. Install the audio tools with your system's package manager:
 
 ```bash
 # Debian / Ubuntu
@@ -36,10 +52,6 @@ sudo pacman -S mpv ffmpeg
 # macOS
 brew install mpv ffmpeg
 ```
-
-Or run the [one-command installer](../README.md#get-started) on a supported
-Linux distribution or macOS with Homebrew. It installs these audio tools and
-the `stumble-radio` command for you.
 
 Package availability can depend on your distribution's enabled repositories.
 mpv is controlled through its JSON IPC interface, which supports reliable external

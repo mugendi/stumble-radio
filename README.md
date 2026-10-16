@@ -110,53 +110,22 @@ Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro s
 
 [Podmoro, scheduling and step-by-step sound setup →](docs/podmoro.md)
 
-## Get started
+## Install
 
-On supported Linux distributions or macOS with Homebrew, install the audio
-dependencies, Stumble Radio, and its Python runtime in one step:
+Install Stumble Radio and its audio dependencies with one command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
 ```
 
-The installer uses `sudo` for Linux system packages when needed. It installs
-`mpv`, FFmpeg, `uv`, and Stumble Radio, then makes the `stumble-radio` command
-available in new terminals. On macOS, install [Homebrew](https://brew.sh) first.
-Start the player with `stumble-radio`.
+The installer sets up `mpv`, FFmpeg, Python, and the `stumble-radio` command.
+On Linux it uses `sudo` for system packages; on macOS, install
+[Homebrew](https://brew.sh) first. Then run `stumble-radio` in a terminal.
+Windows users need WSL with working audio. See the
+[getting started guide](docs/getting-started.md) for requirements and manual
+installation methods.
 
-You need **Python 3.11+** and **mpv** to play stations. **FFmpeg** is optional
-and is needed only for recording. Linux and macOS are supported; Windows users
-need WSL with working audio.
-
-Install the audio prerequisites with your system package manager:
-
-```bash
-# Debian / Ubuntu
-sudo apt install mpv ffmpeg
-
-# Fedora
-sudo dnf install mpv ffmpeg
-
-# Arch Linux
-sudo pacman -S mpv ffmpeg
-
-# macOS (with Homebrew)
-brew install mpv ffmpeg
-```
-
-If you do not need recording, you can omit `ffmpeg`. Install Python 3.11 or
-later and [uv](https://docs.astral.sh/uv/getting-started/installation/) to install
-Stumble Radio globally:
-
-From this project’s checkout, install a globally available command with uv:
-
-```bash
-uv tool install .
-uv tool update-shell
-stumble-radio
-```
-
-Open a new terminal if needed. Press **s** to Stumble, **t** to Teleport,
+Press **s** to Stumble, **t** to Teleport,
 **Ctrl+F** to search, **Ctrl+O** for Podmoro, and **?** for help.
 
 [Installation, audio dependencies and first launch](docs/getting-started.md) ·
