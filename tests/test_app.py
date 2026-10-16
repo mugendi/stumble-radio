@@ -313,6 +313,8 @@ async def test_teleport_changes_country_and_animates_header(db, tmp_path):
         await pilot.pause()
         assert app.current.countrycode == "GB"
         assert app.destination == "United Kingdom" and app.automatic
+        assert str(app.query_one("#destination-line", Static).content) == "◎ LANDED · United Kingdom"
+        assert app.query_one("#discovery-line").region.y == app.query_one("#podmoro-line").region.y
         assert app.query_one("#quick-search").region.y > app.query_one("#transport").region.bottom
 
 

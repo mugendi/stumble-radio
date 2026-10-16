@@ -15,7 +15,7 @@ async def test_discovery_and_failover(station):
 
     def handler(request):
         calls.append(request)
-        assert request.headers["User-Agent"] == "StumbleRadio/0.1.0"
+        assert request.headers["User-Agent"] == "StumbleRadio/0.1.2"
         if request.url.path == "/json/servers":
             return httpx.Response(
                 200,

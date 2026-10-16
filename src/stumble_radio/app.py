@@ -147,6 +147,7 @@ class StumbleRadio(App):
         self.settings = DiscoverySettings()
         self.pool = "Anywhere"
         self.destination = "Earth"
+        self.destination_landed = False
         self.automatic = False
         self.recovering = False
         self.recovery_attempts = 0
@@ -192,8 +193,10 @@ class StumbleRadio(App):
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="masthead"):
-            yield Static("[    ST    ]\nstumble radio", id="logo", markup=False)
-            yield Static("A RADIO FOR CURIOUS EARS\nStumble into something good.", id="tagline")
+            with Vertical(id="masthead-brand"):
+                yield Static("STUMBLE ◎ RADIO", id="logo", markup=False)
+                yield Static("terminal radio for curious minds", id="tagline", markup=False)
+            yield Static("◎ Earth", id="destination-line", markup=False)
         with Horizontal(id="transport"):
             with HorizontalGroup(id="transport-primary"):
                 yield Button("Stumble", id="stumble", variant="primary")
@@ -214,10 +217,9 @@ class StumbleRadio(App):
                 yield Button(
                     "PODMORO", id="podmoro", tooltip="Focus scheduler and voice reminders (Ctrl+O)"
                 )
-        yield Static("", id="discovery-line", markup=False)
-        yield Static(
-            "PODMORO · off · Ctrl+O to schedule a session", id="podmoro-line", markup=False
-        )
+        with Horizontal(id="info-line"):
+            yield Static("", id="discovery-line", markup=False)
+            yield Static("", id="podmoro-line", markup=False)
         with Horizontal(id="body"):
             with Vertical(id="sidebar"):
                 yield Select(
@@ -384,8 +386,17 @@ class StumbleRadio(App):
 
     def update_discovery_line(self):
         self.query_one("#discovery-line", Static).update(
-            f"◎ {self.destination} · {self.pool} · t Teleport · m Shuffle · / Journal · Z Sleep"
+            f"Shuffle · {self.pool}"
         )
+
+    def update_destination_line(self, flight: str = ""):
+        if flight:
+            text = flight
+        elif self.destination_landed:
+            text = f"◎ LANDED · {self.destination}"
+        else:
+            text = f"◎ {self.destination}"
+        self.query_one("#destination-line", Static).update(text)
 
     def update_filter_bar(self):
         search = self.filters
@@ -757,17 +768,13 @@ class StumbleRadio(App):
         if session:
             seconds = max(0, int(session["remaining"]))
             block = session["completed"] + (1 if session["phase"] == "focus" else 0)
-            text = f"PODMORO · {PHASES[session['phase']]} {seconds // 60:02}:{seconds % 60:02} · block {block}"
+            text = f"│ PODMORO · {PHASES[session['phase']]} {seconds // 60:02}:{seconds % 60:02} · #{block}"
             if session["paused"]:
-                text += " · PAUSED"
+                text += " · paused"
         else:
-            text = "PODMORO · off · Ctrl+O"
+            text = "│ PODMORO · off"
         if self.pomodoro.quiet:
-            text += " · Quiet"
-        if self.pomodoro.notice:
-            text += " · " + self.pomodoro.notice
-        elif self.last_announcement:
-            text += " · " + self.last_announcement.text
+            text += " · quiet"
         self.query_one("#podmoro-line", Static).update(text)
 
     async def persist_pomodoro(self):
@@ -1053,7 +1060,6 @@ class StumbleRadio(App):
         if self.query_error:
             self.notify("Fix the search query or clear it first.", severity="warning")
             return
-        landed = False
         search = replace(
             self.filters,
             name="",
@@ -1081,10 +1087,7 @@ class StumbleRadio(App):
             frames = ("◐", "◓", "◑", "◒")
             for index in range(12):
                 flying = countries[index % len(countries)][1]
-                self.query_one("#tagline", Static).update(
-                    f"{frames[index % 4]} TELEPORTING\n{flying}"
-                )
-                self.query_one("#discovery-line", Static).update(
+                self.update_destination_line(
                     f"{frames[index % 4]} Around the world · {flying}"
                 )
                 await asyncio.sleep(0.07)
@@ -1098,19 +1101,13 @@ class StumbleRadio(App):
                 self.notify(f"No eligible streams in {country}. Teleport again.", markup=False)
                 return
             self.destination = country
-            landed = True
+            self.destination_landed = True
             self.random_search, self.random_library, self.random_pool = search, "browse", "Anywhere"
-            self.query_one("#tagline", Static).update(
-                f"◎ LANDED · {country}\nYour next frequency, a world away."
-            )
             self.tune(rows[0], automatic=True)
         except (DirectoryError, sqlite3.Error) as error:
             self.notify(str(error), severity="warning", markup=False)
         finally:
-            if not landed:
-                self.query_one("#tagline", Static).update(
-                    f"◎ {self.destination}\nStumble into something good."
-                )
+            self.update_destination_line()
             self.update_discovery_line()
 
     @work(group="transport")
