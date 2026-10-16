@@ -57,6 +57,10 @@ all stations, including after changing stations, reconnecting, or restarting.
 
 - Adjust **60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz** from **−12 to +12 dB**.
 - **Gain / boost** adds **0 to +12 dB**, separately from the normal volume control.
+- **Auto level** is enabled by default and balances stations toward a shared loudness target. Turn it off in the equalizer when you prefer station levels to vary. With it enabled,
+  Gain sets the target from **−23 LUFS** (0) to **−11 LUFS** (+12); for example,
+  +6 targets **−17 LUFS**. The bottom status bar reports the target and current
+  correction, or whether it is measuring, waiting for audio, paused, or unavailable.
 - Type a whole number or use the minus/plus buttons for 1 dB steps. The fields
   scroll on smaller terminals; Save and Cancel remain below them.
 - **Flat**, **Bass boost**, **Speech**, **Rock**, **Pop**, **Jazz**, and **Classical**
@@ -71,12 +75,21 @@ editor. Invalid values leave the last valid sound playing. A save error keeps
 your draft open for retry or cancellation. Changes can briefly reconfigure the
 audio filter without retuning the station or restarting a recording.
 
-With EQ or gain active, a peak limiter caps digital sample peaks at **−1 dBFS**
-without automatic makeup gain.
+With EQ, gain, or automatic leveling active, a peak limiter caps digital sample
+peaks at **−1 dBFS** without automatic makeup gain.
 Boost helps quieter streams; already-loud streams may sound compressed. Flat EQ
-with zero gain is unprocessed. Normal volume, pause, sleep fading, and Podmoro
-voice volume remain independent. Recordings retain the original stream, and
+with zero gain and Auto level turned off is unprocessed. Normal volume, pause, sleep fading, and Podmoro
+voice volume remain independent. Master volume is saved automatically and
+restored on the next launch (65% on first use). Recordings retain the original stream, and
 silence detection and the audio meter measure the source before EQ and gain.
+Automatic leveling measures three-second short-term loudness after EQ, starts each
+station at −12 dB correction, and moves gradually to avoid sudden jumps. It freezes
+on silence and while playback is paused or buffering. Its correction is limited to
+−36…+24 dB. The target is a practical shared listening level, not broadcast
+normalization: stations with extreme loudness differences may reach the correction
+limit, and the limiter can compress peaks on heavily boosted audio. If mpv cannot
+provide loudness metadata, playback continues with normal EQ and gain, and the
+status reports leveling as unavailable.
 
 The equalizer uses mpv's audio filters. An unsupported build or rejected filter
 shows an error and restores working sound; restored settings that cannot be

@@ -11,10 +11,13 @@ The destination and shuffle mode stay above the browser. Here the destination is
 **Teleport** chooses uniformly among countries with eligible cached stations,
 animates a spinning destination header, and tunes there. When more than one
 country is available, it avoids the currently playing country. Teleport clears
-the name/country/region/radius restrictions for the trip; language, genre, codec,
-bitrate, and health filters still apply. It explores the public catalogue,
-independently of the selected personal library or session shuffle mode. If the
-cache is empty, it can discover countries online and cache candidates on arrival.
+the station-name, country, region, and radius restrictions for the trip; language,
+genre, codec, bitrate, and health filters still apply. It explores the public
+catalogue, independently of the selected personal library or session shuffle
+mode. Stumble uses the current search and selected library, but Teleport does not
+honor all active search fields. Search-bound Teleport (keeping the complete result
+set as the destination pool) is not currently supported. If the cache is empty,
+Teleport can discover countries online and cache candidates on arrival.
 The destination remains in the header after landing.
 
 **Hot/Cold learning** stays entirely in SQLite:
@@ -42,8 +45,9 @@ Press **m** (shown in the bottom key strip) to cycle the pool used by your *next
 | Nearby | Your saved coordinates and radius, overriding the geographic search fields |
 
 The active mode appears above the station browser. These modes change random
-selection; they do not rewrite the station table's search. Other advanced filters
-and the chosen library still apply. Music/talk classification is a heuristic
+selection; they do not rewrite the station table's search. Stumble remains bounded
+by the current search and chosen library. Teleport follows its own destination
+rules described above, rather than the complete result set. Music/talk classification is a heuristic
 based on community tags, so untagged or unusual formats can be missed.
 
 Use **Ctrl+G** to set one language name (for example, `english` or `swahili`),

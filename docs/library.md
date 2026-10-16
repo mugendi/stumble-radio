@@ -152,7 +152,9 @@ The directory contains `radio.sqlite3`, SQLite's transient WAL files, a
 library. The database holds favourites, station notes and personal tags,
 listening and song history, learning preferences, global equalizer and gain
 settings, and Podmoro profiles, schedules and checkpoints. Equalizer settings
-are saved under the `equalizer_v1` metadata key and apply to all stations.
+are saved under the `equalizer_v1` metadata key and apply to all stations; master
+volume is saved under `volume_v1` and restored at startup. Auto level is enabled
+by default, including for older saved equalizer settings that predate the toggle.
 These do not require a separate account or cloud service. No telemetry is added.
 When online, a successful play sends the directory's standard click notification.
 
