@@ -112,6 +112,18 @@ Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro s
 
 ## Get started
 
+On supported Linux distributions or macOS with Homebrew, install the audio
+dependencies, Stumble Radio, and its Python runtime in one step:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
+```
+
+The installer uses `sudo` for Linux system packages when needed. It installs
+`mpv`, FFmpeg, `uv`, and Stumble Radio, then makes the `stumble-radio` command
+available in new terminals. On macOS, install [Homebrew](https://brew.sh) first.
+Start the player with `stumble-radio`.
+
 You need **Python 3.11+** and **mpv** to play stations. **FFmpeg** is optional
 and is needed only for recording. Linux and macOS are supported; Windows users
 need WSL with working audio.

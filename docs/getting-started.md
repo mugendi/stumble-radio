@@ -37,6 +37,10 @@ sudo pacman -S mpv ffmpeg
 brew install mpv ffmpeg
 ```
 
+Or run the [one-command installer](../README.md#get-started) on a supported
+Linux distribution or macOS with Homebrew. It installs these audio tools and
+the `stumble-radio` command for you.
+
 Package availability can depend on your distribution's enabled repositories.
 mpv is controlled through its JSON IPC interface, which supports reliable external
 pause, volume, metadata, and playback events. FFplay's interactive controls are
