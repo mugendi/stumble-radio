@@ -95,7 +95,7 @@ As you play music, discover new tunes and develop new tastes, you habits change 
 [Listening journal and radio passport →](docs/journal.md)
 
 ### Find that song again
-If you are like me, and if you happen to [teleport](#discover-somewhere-new) around as much as I do, then you know that situation where you remember listening to  Lupe Fiasco song but cannot remember what channel it was. This feature keeps a track of your listening history and allows you to jump back and rediscover gems for up to 1 year! You simply click "Last Play" and search for "Lupe..."!
+If you are like me, and if you happen to [teleport](#discover-somewhere-new) around as much as I do, then you know that situation where you remember listening to  Lupe Fiasco song but cannot remember what channel it was. This feature keeps a track of your listening history and allows you to jump back and rediscover gems for up to 1 year! Simply press `l` (Last Play) and search for "Lupe..."!
 
 - **Last Play Search:** search remembered artists, songs or stations you heard.
 - See where and when you heard each track, newest first, and tune that station.
