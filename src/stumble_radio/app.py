@@ -263,6 +263,7 @@ class StumbleRadio(App):
         self.update_checked_at = 0.0
         self.relaunch_requested = False
         self.daypart = ""
+        self.resume_station: Station | None = None
         self.station_clock: tuple[int, int] | None = None
 
     def compose(self) -> ComposeResult:
@@ -377,6 +378,10 @@ class StumbleRadio(App):
                 self.notify("Saved time sync was invalid; using Off.", severity="warning")
         self.update_discovery_line()
         await self.refresh_library()
+        last_uuid = await asyncio.to_thread(self.db.metadata, "last_played")
+        if last_uuid:
+            self.resume_station = await asyncio.to_thread(self.db.station, last_uuid)
+            self.update_pinned_station()
         saved_pomodoro = await asyncio.to_thread(self.db.metadata, "pomodoro_v1")
         if saved_pomodoro:
             try:
@@ -895,8 +900,16 @@ class StumbleRadio(App):
             pinned.update(text)
             pinned.display = True
         else:
-            pinned.update("")
-            pinned.display = False
+            if self.resume_station:
+                country = (
+                    f" · {self.resume_station.country}" if self.resume_station.country else ""
+                )
+                pinned.update(f"▶ LAST · {self.resume_station.name}{country} · Space resumes")
+                pinned.tooltip = str(pinned.render())
+                pinned.display = True
+            else:
+                pinned.update("")
+                pinned.display = False
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if self.is_running and event.data_table.id == "stations":
@@ -1463,6 +1476,11 @@ class StumbleRadio(App):
                 if self.notes_hint_count > 3:
                     self.query_one(StationTable).tooltip = None
             self.current = station
+            self.resume_station = None
+            self.run_worker(
+                asyncio.to_thread(self.db.set_metadata, "last_played", station.stationuuid),
+                group="settings",
+            )
             if station.country:
                 self.destination, self.destination_landed = station.country, True
             self.update_destination_line()
@@ -1758,6 +1776,8 @@ class StumbleRadio(App):
                     await self.dismiss_voice()
                 await self.player.pause()
                 await self.apply_volume()
+            elif self.resume_station:
+                self.manual_tune(self.resume_station)
             elif station := self.selected_station():
                 self.manual_tune(station)
         except PlayerError as error:

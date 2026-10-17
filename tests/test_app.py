@@ -1160,3 +1160,36 @@ async def test_stumble_falls_back_when_bucket_empty(db, station, monkeypatch, tm
         assert calls == [64, 8]
         assert app.current and app.current.countrycode == "FJ"
         assert any("landing anywhere" in text for text in notices)
+
+
+async def test_last_played_persisted_on_tune(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        await pilot.pause()
+        assert db.metadata("last_played") == station.stationuuid
+
+
+async def test_space_resumes_last_played_after_restart(db, station, tmp_path):
+    db.set_metadata("last_played", station.stationuuid)
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        pinned = app.query_one("#playing-station", Static)
+        assert "LAST" in str(pinned.render())
+        assert app.resume_station and app.resume_station.stationuuid == station.stationuuid
+        await pilot.press("space")
+        await pilot.pause()
+        assert app.current and app.current.stationuuid == station.stationuuid
+        assert app.resume_station is None
+
+
+async def test_space_without_last_played_keeps_selection(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.resume_station = None
+        await pilot.press("space")
+        await pilot.pause()
+        assert app.current and app.current.stationuuid == station.stationuuid
