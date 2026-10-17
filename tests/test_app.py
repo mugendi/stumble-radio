@@ -975,3 +975,73 @@ async def test_updates_stale_cache_triggers_fetch_and_persists(db, station, monk
         saved = json.loads(db.metadata("update_check"))
         assert 0 <= time.time() - saved["checked"] < 60
         assert saved["latest"] == "0.1.4"
+
+
+async def test_update_flow_confirms_upgrades_and_hands_off(db, station, tmp_path, monkeypatch):
+    import stumble_radio.updates as updates_module
+
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.update_available = None
+        await app.action_update().wait()
+        await pilot.pause()
+        assert not app.relaunch_requested
+
+        import stumble_radio.app as app_module
+
+        monkeypatch.setattr(app_module, "uv_command", lambda: None)
+        app.update_available = "0.1.4"
+        worker = app.action_update()
+        await pilot.pause()
+        assert isinstance(app.screen, ConfirmScreen)
+        await pilot.press("y")
+        await worker.wait()
+        await pilot.pause()
+        assert not app.relaunch_requested
+        await pilot.press("escape")
+        await pilot.pause()
+
+        monkeypatch.setattr(
+            app_module, "uv_command", lambda: ["/usr/bin/uv", "tool", "install", "--upgrade", "x"]
+        )
+        ran = []
+
+        async def fake_run_upgrade(command, progress):
+            ran.append(command)
+            progress("Installing 0.1.4")
+            return True
+
+        monkeypatch.setattr(app_module, "run_upgrade", fake_run_upgrade)
+        calls = []
+        monkeypatch.setattr(app, "handoff_relaunch", lambda: calls.append(True), raising=False)
+        app.update_available = "0.1.4"
+        worker = app.action_update()
+        await pilot.pause()
+        assert isinstance(app.screen, ConfirmScreen)
+        await pilot.press("y")
+        await worker.wait()
+        await pilot.pause()
+        assert calls == [True]
+        assert ran == [["/usr/bin/uv", "tool", "install", "--upgrade", "x"]]
+        assert app.player.closed
+
+    app2 = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app2.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app2.update_available = "0.1.4"
+        monkeypatch.setattr(updates_module, "metadata_available", lambda: True)
+        monkeypatch.setattr(app_module, "uv_command", lambda: ["/usr/bin/uv", "x"])
+
+        async def failing(_command, _progress):
+            return False
+
+        monkeypatch.setattr(app_module, "run_upgrade", failing)
+        app2.update_available = "0.1.4"
+        worker = app2.action_update()
+        await pilot.pause()
+        if isinstance(app2.screen, ConfirmScreen):
+            await pilot.press("y")
+        await worker.wait()
+        await pilot.pause()
+        assert not app2.relaunch_requested

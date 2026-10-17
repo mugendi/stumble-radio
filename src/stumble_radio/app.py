@@ -42,7 +42,13 @@ from .screens import (
     StationPicker,
 )
 from .tracks import track_from_metadata
-from .updates import fetch_latest_version, installed_version, is_newer
+from .updates import (
+    fetch_latest_version,
+    installed_version,
+    is_newer,
+    run_upgrade,
+    uv_command,
+)
 
 
 def restore_volume(value: str) -> int:
@@ -158,6 +164,7 @@ class StumbleRadio(App):
         Binding("plus,equals", "volume_up", "Volume +", show=False),
         Binding("minus", "volume_down", "Volume −", show=False),
         Binding("Z,z", "sleep", "Sleep", show=False),
+        Binding("U", "update", "Update app", show=False),
         Binding("u", "online", "Online", show=False),
         Binding("left_square_bracket", "previous_page", "Page back", show=False),
         Binding("right_square_bracket", "next_page", "Page forward", show=False),
@@ -253,6 +260,7 @@ class StumbleRadio(App):
         self.spinner_frame = 0
         self.update_available: str | None = None
         self.update_checked_at = 0.0
+        self.relaunch_requested = False
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="masthead"):
@@ -545,6 +553,55 @@ class StumbleRadio(App):
         if is_newer(latest, installed_version()):
             self.update_available = latest
             self.notify(f"A newer version is available: {latest} — press U to update")
+
+    def handoff_relaunch(self) -> None:
+        self.relaunch_requested = True
+        self.exit()
+
+    @work(group="updates", exclusive=True)
+    async def action_update(self) -> None:
+        if not self.update_available:
+            latest = str((self.update_cache() or {}).get("latest") or "")
+            if latest and is_newer(latest, installed_version()):
+                self.update_available = latest
+            if not self.update_available:
+                if not self.offline:
+                    self.notify("No update available.")
+                return
+        latest, current = self.update_available, installed_version()
+        self.update_available = None
+        if not await self.push_screen_wait(
+            ConfirmScreen(
+                "UPDATE",
+                f"Update Stumble Radio now? ({current} → {latest})\nPlayback pauses during the update.",
+                confirm="Update",
+            )
+        ):
+            return
+        command = uv_command()
+        if not command:
+            self.notify("uv not found — update via your installation method.", severity="warning")
+            return
+
+        def show(text: str) -> None:
+            frame = SPINNER_FRAMES[int(time.time() * 4) % len(SPINNER_FRAMES)]
+            self.update_destination_line(f"{frame} Updating · {text[:44]}")
+
+        show("checking tool")
+        self.playback_wanted = self.automatic = False
+        await self.dismiss_voice()
+        self.workers.cancel_group(self, "recovery")
+        ok = await run_upgrade(command, show)
+        if not ok:
+            self.playback_wanted = bool(self.current)
+            self.notify("Update failed — check your network and try U again.", severity="error")
+            self.update_destination_line()
+            return
+        self.notify(f"Updated {current} → {latest} · relaunching…")
+        await self.persist_pomodoro()
+        await self.checkpoint_listening("quit")
+        await self.player.close()
+        self.handoff_relaunch()
 
     def update_filter_bar(self):
         search = self.filters

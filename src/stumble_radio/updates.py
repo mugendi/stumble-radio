@@ -2,6 +2,7 @@
 
 import asyncio
 import importlib.metadata
+import shutil
 from pathlib import Path
 
 import httpx
@@ -56,3 +57,44 @@ async def _fetch_latest_version() -> str | None:
 
 def fetch_latest_version() -> str | None:
     return asyncio.run(_fetch_latest_version())
+
+
+def metadata_available() -> bool:
+    """True when stumble-radio is installed as a package; False marks a bare source run."""
+    try:
+        importlib.metadata.version("stumble-radio")
+    except importlib.metadata.PackageNotFoundError:
+        return False
+    return True
+
+
+def uv_command() -> list[str] | None:
+    if not metadata_available():
+        return None
+    uv = shutil.which("uv")
+    if not uv:
+        for directory in UV_FALLBACK_DIRS:
+            candidate = directory / "uv"
+            if candidate.exists():
+                uv = str(candidate)
+                break
+    if not uv:
+        return None
+    return [uv, "tool", "install", "--upgrade", "--python", "3.11", SOURCE_ARCHIVE]
+
+
+async def run_upgrade(command: list[str], progress) -> bool:
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+    except OSError:
+        return False
+    assert process.stdout is not None
+    while chunk := await process.stdout.read(2048):
+        text = chunk.decode(errors="replace").strip()
+        if text:
+            progress(text.splitlines()[-1])
+    return (await process.wait()) == 0

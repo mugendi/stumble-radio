@@ -89,3 +89,61 @@ def test_fetch_latest_version_fails_silently(monkeypatch):
         updates.httpx, "AsyncClient", lambda *a, **kw: FakeClient([])
     )
     assert updates.fetch_latest_version() is None
+
+
+def test_metadata_available_reflects_package_metadata(monkeypatch):
+    monkeypatch.setattr(updates.importlib.metadata, "version", lambda _name: "0.1.9")
+    assert updates.metadata_available()
+
+    def missing(_name):
+        raise updates.importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(updates.importlib.metadata, "version", missing)
+    assert not updates.metadata_available()
+
+
+def test_uv_command_falls_back_to_home_dirs(monkeypatch, tmp_path):
+    monkeypatch.setattr(updates.shutil, "which", lambda name: None)
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    (fake_bin / "uv").touch()
+    monkeypatch.setattr(updates, "UV_FALLBACK_DIRS", (fake_bin,))
+    command = updates.uv_command()
+    assert str(fake_bin / "uv") in str(command)
+    assert "--upgrade" in command and updates.SOURCE_ARCHIVE in command
+
+
+def test_uv_command_none_when_missing(monkeypatch):
+    monkeypatch.setattr(updates.shutil, "which", lambda name: None)
+    monkeypatch.setattr(updates, "UV_FALLBACK_DIRS", ())
+    assert updates.uv_command() is None
+
+
+async def test_run_upgrade_reports_success_and_failure(monkeypatch):
+    import asyncio as _asyncio
+
+    class FakeProc:
+        def __init__(self, code):
+            self.code = code
+            self.sent = False
+            self.stdout = self
+
+        async def read(self, size):
+            if self.sent:
+                return b""
+            self.sent = True
+            return b"Installing 0.1.4...\n"
+
+        async def wait(self):
+            return self.code
+
+    jobs = iter([FakeProc(0), FakeProc(1)])
+
+    async def fake_exec(*command, stdout=None, stderr=None):
+        return next(jobs)
+
+    monkeypatch.setattr(_asyncio, "create_subprocess_exec", fake_exec)
+    seen = []
+    assert await updates.run_upgrade(["uv", "tool", "install", "--upgrade", "x"], seen.append)
+    assert "Installing" in "".join(seen)
+    assert await updates.run_upgrade(["uv", "install", "x"], seen.append) is False
