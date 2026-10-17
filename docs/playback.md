@@ -41,6 +41,7 @@ station list. `Ctrl+Q` quits even while an input has focus.
 | `+` / `-` | Raise/lower volume by 5 |
 | `r` | Start or finish recording the **playing** station |
 | `Z` / `z` | Set or cancel a sleep countdown and fade |
+| `U` | Update the app when a newer release is available (checked at launch) |
 | `u` | Fetch another online results batch for Explore's current filters |
 | `[` / `]` | Previous/next page (100 stations per page) |
 | `?` | Show help |

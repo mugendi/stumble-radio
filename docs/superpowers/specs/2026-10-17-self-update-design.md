@@ -19,7 +19,8 @@ update script.
   refreshed.
 - Upgrade degree: graceful exit → subprocess upgrade → process re-exec. No
   in-place environment swapping, no autopdate.
-- Trigger: only the user, via `U` + confirmation. Launch check only informs.
+- Trigger: only the user, via capital `U` + confirmation. Lowercase `u` stays
+  the Explore online-batch fetch. Launch check only informs.
 
 ## Components
 
