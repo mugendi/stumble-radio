@@ -69,7 +69,12 @@ class FakeResponse:
 
 def test_fetch_latest_version_returns_newest_numeric_tag(monkeypatch):
     client = FakeClient([{"name": "cron-runner"}, {"name": "v0.2.0"}, {"name": "v0.1.3"}])
-    monkeypatch.setattr(updates.httpx, "AsyncClient", lambda *a, **kw: client)
+
+    def fake_async_client(*args, **kwargs):
+        client.headers = kwargs.get("headers")
+        return client
+
+    monkeypatch.setattr(updates.httpx, "AsyncClient", fake_async_client)
     assert updates.fetch_latest_version() == "0.2.0"
     assert client.headers == {"Accept": "application/vnd.github+json"}
 
