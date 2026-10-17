@@ -14,11 +14,12 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from uuid import NAMESPACE_DNS, uuid5
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from textual.widgets import Button, DataTable, Input, Static, TabbedContent
+from textual.widgets import Button, DataTable, Input, Select, Static, TabbedContent
 
 from stumble_radio.announcements import AudioLibrary
 from stumble_radio.app import StumbleRadio
@@ -65,6 +66,18 @@ STATION_NAMES = [
 ]
 REAL_DB_PATH = Path.home() / ".local" / "share" / "stumble-radio" / "radio.sqlite3"
 
+# Fallback specs for catalogue names the real database no longer carries.
+SYNTH_SPECS = {
+    "NRG Radio": {
+        "station": {
+            "country": "Kenya", "cc": "KE", "state": "Nairobi",
+            "lang": "swahili,english", "tags": "pop,hip hop,afrobeat,afrobeats",
+            "codec": "MP3", "bitrate": 128,
+        },
+        "votes": 410, "plays": 260, "lat": -1.2921, "lon": 36.8219,
+    },
+}
+
 
 def load_real_specs() -> list[dict]:
     """Pull the curated demonstration stations straight out of a real catalogue."""
@@ -90,11 +103,20 @@ def load_real_specs() -> list[dict]:
             "bitrate": r[9], "votes": r[10], "plays": r[11],
             "lat": r[12], "lon": r[13],
         }
-    return list(specs.values())
-    missing = set(STATION_NAMES) - {s["name"] for s in specs}
+    for name, spec in SYNTH_SPECS.items():
+        if name not in specs:
+            slug = name.lower().replace(" ", "-").replace("!", "").replace(".", "")
+            specs[name] = {
+                "uuid": uuid5(NAMESPACE_DNS, f"demo:{slug}").hex,
+                "name": name,
+                "url": f"https://streams.example.org/{slug}",
+                "votes": spec["votes"], "plays": spec["plays"],
+                "lat": spec["lat"], "lon": spec["lon"], **spec["station"],
+            }
+    missing = set(STATION_NAMES) - {s["name"] for s in specs.values()}
     if missing:
         raise SystemExit(f"Stations missing from {REAL_DB_PATH}: {sorted(missing)}")
-    return specs
+    return [specs[name] for name in STATION_NAMES if name in specs]
 
 
 STATIONS = load_real_specs()
@@ -332,10 +354,12 @@ async def main_captures(app, pilot) -> None:
     await shot(app, "teleport-spin")
     app.update_destination_line()
 
-    # --- discovery.png: landed in Japan, Music-only, Jazz Sakura playing.
+    # --- discovery.png: landed in Japan, Music-only, Jazz Sakura playing,
+    #     with Breakfast Shows station sync armed in the sidebar.
     sakura = by_name["Jazz Sakura (asia dream radio)"]
     app.destination, app.destination_landed = "Japan", True
     app.pool = "Music-only"
+    app.query_one("#sync-by", Select).value = "breakfast"
     lately(app, sakura)
     app.media_title = "Tatsuro Yamashita — Ride on Time"
     app.track_metadata = {"icy-title": "Tatsuro Yamashita - Ride on Time"}
@@ -346,6 +370,8 @@ async def main_captures(app, pilot) -> None:
     await pilot.pause()
     await shot(app, "discovery")
     app.pool = "Anywhere"
+    app.query_one("#sync-by", Select).value = ""
+    app.set_daypart("")
     app.destination, app.destination_landed = "Earth", False
     app.update_destination_line()
     lately(app, app.stations[0])
