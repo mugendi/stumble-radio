@@ -906,3 +906,28 @@ def test_waveform_graph_draws_smooth_wave():
     assert len(wave) == 9 and wave[2] == "▇" and wave[-1] == " "
     assert "█" in waveform_graph([0.05, 0.15, 1.0, 0.15, 0.05], 9)
     assert waveform_graph([0.05] * 6, 6) == " " * 6
+    gain = waveform_graph([0.2, 0.9, 0.2], 5, lo=0.2, hi=0.9)
+    assert gain[0] == gain[-1] == " " and gain[2] == "█"
+
+
+async def test_status_spinner_tracks_loading_and_buffering(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        status = app.query_one("#status-line", Static)
+        app.spinner_frame = 1
+        app.current = station
+        app.play_state = "TUNING"
+        app.update_status()
+        text = str(status.content)
+        assert text.endswith("◓ loading…")
+        assert len(text) <= status.size.width
+        # While buffering, the same slot reports buffering instead.
+        app.play_state = "BUFFERING"
+        app.update_status()
+        assert "buffering…" in str(status.content)
+        # With audio flowing again the spinner disappears entirely.
+        app.play_state = "PLAYING"
+        app.update_status()
+        assert "loading…" not in str(status.content)
+        assert "buffering…" not in str(status.content)

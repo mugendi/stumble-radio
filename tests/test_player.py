@@ -56,6 +56,7 @@ async def test_ipc_playback_record_switch_and_cleanup(tmp_path, station, monkeyp
     processes = []
     servers = []
     writers = []
+    loads = []
 
     async def serve(reader, writer):
         writers.append(writer)
@@ -69,6 +70,8 @@ async def test_ipc_playback_record_switch_and_cleanup(tmp_path, station, monkeyp
                     ).encode()
                 )
                 if message["command"][0] == "loadfile":
+                    # Gapless switching keeps the previous mpv alive while the next one loads.
+                    loads.append(processes[0].returncode is None)
                     writer.write(
                         b'{"event":"start-file"}\n'
                         b'{"event":"file-loaded"}\n'
@@ -130,7 +133,9 @@ async def test_ipc_playback_record_switch_and_cleanup(tmp_path, station, monkeyp
         assert player.record_process.returncode is None
         saved = await player.play(replace(station, stationuuid="next", name="../../unsafe/name"))
         assert saved == path and player.record_process is None
-        assert processes[1].returncode == 0
+        assert player.station.stationuuid == "next"
+        assert loads == [True, True]
+        assert processes[3].returncode is None and processes[0].returncode == -15
         path2 = await player.record()
         assert path2.parent == tmp_path / "recordings"
         # A live mpv process with a lost IPC connection must be restarted too.
@@ -139,6 +144,7 @@ async def test_ipc_playback_record_switch_and_cleanup(tmp_path, station, monkeyp
         await asyncio.wait_for(player.reader_task, timeout=2)
         await player.play(station)
         assert sum(command[0] == "loadfile" for command in commands) == 3
+        assert loads == [True, True, False]
         assert processes[0].returncode is not None and processes[-1].returncode is None
         socket_dir = Path(player.tempdir.name)
         await player.close()
@@ -150,6 +156,65 @@ async def test_ipc_playback_record_switch_and_cleanup(tmp_path, station, monkeyp
         for server in servers:
             server.close()
             await server.wait_closed()
+
+
+async def test_gapless_failure_keeps_current_stream(tmp_path, station, monkeypatch):
+    processes = []
+    mpvs = []
+    mode = {"buffering": True}
+
+    async def serve(reader, writer):
+        try:
+            while line := await reader.readline():
+                message = json.loads(line)
+                writer.write(
+                    (
+                        json.dumps({"request_id": message["request_id"], "error": "success"}) + "\n"
+                    ).encode()
+                )
+                if message["command"][0] == "loadfile":
+                    if mode["buffering"]:
+                        writer.write(b'{"event":"file-loaded"}\n')
+                    else:
+                        writer.write(b'{"event":"start-file"}\n{"event":"end-file","reason":"error"}\n')
+                await writer.drain()
+        finally:
+            writer.close()
+
+    async def spawn(*args, **kwargs):
+        process = Process()
+        processes.append(process)
+        if args[0] == "mpv" and "--af=help" in args:
+            process.stdout = io.BytesIO(
+                b"  aformat       Convert the input to a fixed format.\n"
+                b"  volume        Apply volume.\n  equalizer     Pre-defined equalizer.\n"
+                b"  alimiter      Lookahead limiter.\n  ebur128       EBUR128 loudness meter.\n"
+            )
+            return process
+        if args[0] == "mpv":
+            path = next(a.split("=", 1)[1] for a in args if a.startswith("--input-ipc-server="))
+            await asyncio.start_unix_server(serve, path=path)
+            mpvs.append(process)
+        return process
+
+    monkeypatch.setattr("stumble_radio.player.shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("stumble_radio.player.asyncio.create_subprocess_exec", spawn)
+    player = Player(tmp_path / "recordings")
+    try:
+        await player.play(station)
+        mode["buffering"] = False
+        with pytest.raises(PlayerError, match="waiting for the stream"):
+            await player.play(replace(station, stationuuid="next"))
+        assert mpvs[0].returncode is None and player.station.stationuuid == "one"
+        # The failed secondary instance is gone, the live stream kept playing.
+        assert all(p.returncode is not None for p in processes[2:])
+        mode["buffering"] = True
+        await player.play(replace(station, stationuuid="third"))
+        assert player.station.stationuuid == "third"
+        assert mpvs[0].returncode == -15 and mpvs[2].returncode is None
+    finally:
+        await player.close()
+        assert all(p.returncode is not None for p in processes)
 
 
 async def test_missing_player_and_invalid_stream(tmp_path, station, monkeypatch):
