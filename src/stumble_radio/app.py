@@ -42,6 +42,7 @@ from .screens import (
     StationPicker,
 )
 from .tracks import track_from_metadata
+from .updates import fetch_latest_version, installed_version, is_newer
 
 
 def restore_volume(value: str) -> int:
@@ -77,6 +78,8 @@ def excerpt(text: str, limit: int = 96) -> str:
 
 BLOCK_STEPS = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
 SPINNER_FRAMES = ("◐", "◓", "◑", "◒")
+UPDATE_CACHE_SECONDS = 24 * 3600
+UPDATE_CACHE_KEY = "update_check"
 
 
 def waveform_graph(levels: list[float], columns: int, lo: float = 0.0, hi: float = 1.0) -> str:
@@ -248,6 +251,8 @@ class StumbleRadio(App):
         self.sleep_gain = 1.0
         self.last_pomodoro_save = time.monotonic()
         self.spinner_frame = 0
+        self.update_available: str | None = None
+        self.update_checked_at = 0.0
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="masthead"):
@@ -364,6 +369,7 @@ class StumbleRadio(App):
         self.set_interval(3600, self.prune_track_history)
         self.set_interval(0.14, self.refresh_spinner)
         self.consume_player_events()
+        self.check_for_updates()
         if not self.offline:
             self.catalogue_loop()
 
@@ -505,6 +511,40 @@ class StumbleRadio(App):
         destination = self.query_one("#destination-line", Static)
         destination.update(text)
         destination.tooltip = text
+
+    def update_cache(self) -> dict | None:
+        try:
+            cache = json.loads(self.db.metadata(UPDATE_CACHE_KEY) or "{}")
+        except ValueError:
+            return None
+        if isinstance(cache, dict) and "checked" in cache:
+            return cache
+        return None
+
+    @work(group="updates")
+    async def check_for_updates(self) -> None:
+        cache = self.update_cache()
+        if (
+            cache
+            and time.time() - cache.get("checked", 0) < UPDATE_CACHE_SECONDS
+            and str(cache.get("latest") or "")
+        ):
+            latest = str(cache["latest"])
+        else:
+            if self.offline:
+                return
+            latest = await asyncio.to_thread(fetch_latest_version)
+            if latest is None:
+                return
+            self.update_checked_at = time.time()
+            await asyncio.to_thread(
+                self.db.set_metadata,
+                UPDATE_CACHE_KEY,
+                json.dumps({"checked": self.update_checked_at, "latest": latest}),
+            )
+        if is_newer(latest, installed_version()):
+            self.update_available = latest
+            self.notify(f"A newer version is available: {latest} — press U to update")
 
     def update_filter_bar(self):
         search = self.filters

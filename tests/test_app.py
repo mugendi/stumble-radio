@@ -1,4 +1,5 @@
 import asyncio
+import json
 import time
 from dataclasses import replace
 
@@ -931,3 +932,46 @@ async def test_status_spinner_tracks_loading_and_buffering(db, station, tmp_path
         app.update_status()
         assert "loading…" not in str(status.content)
         assert "buffering…" not in str(status.content)
+
+
+async def test_updates_cached_hint_shows_even_offline(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.check_for_updates()
+        await pilot.pause()
+        assert app.update_available is None
+
+    db.set_metadata("update_check", json.dumps({"checked": time.time() - 100, "latest": "0.1.4"}))
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.check_for_updates()
+        await pilot.pause()
+        assert app.update_available == "0.1.4"
+
+    db.set_metadata("update_check", json.dumps({"checked": time.time() - 100, "latest": "0.1.3"}))
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.check_for_updates()
+        await pilot.pause()
+        assert app.update_available is None
+
+
+async def test_updates_stale_cache_triggers_fetch_and_persists(db, station, monkeypatch, tmp_path):
+    # Fresh sync checkpoint so the launch catalogue loop never contacts the offline stub.
+    db.set_metadata("last_sync", str(time.time()))
+    import stumble_radio.app as app_module
+
+    monkeypatch.setattr(app_module, "fetch_latest_version", lambda: "0.1.4")
+    app = StumbleRadio(db, tmp_path, offline=False, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        db.set_metadata("update_check", json.dumps({"checked": time.time() - 3 * 86400, "latest": "0.1.2"}))
+        await app.check_for_updates().wait()
+        await pilot.pause()
+        assert app.update_available == "0.1.4"
+        saved = json.loads(db.metadata("update_check"))
+        assert 0 <= time.time() - saved["checked"] < 60
+        assert saved["latest"] == "0.1.4"
