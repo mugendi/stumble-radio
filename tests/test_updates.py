@@ -33,3 +33,53 @@ def test_is_newer_compares_numerically():
 def test_tag_constants_match_install_script():
     assert updates.SOURCE_ARCHIVE in Path("install.sh").read_text()
     assert updates.REPO_TAGS_URL.startswith("https://api.github.com/repos/")
+
+
+class FakeClient:
+    def __init__(self, payload=None, error=False, headers=None):
+        self.payload = payload if payload is not None else [{"name": "v0.1.4"}, {"name": "v0.1.3"}]
+        self.error = error
+        self.headers = headers
+
+    async def __aenter__(self):
+        if self.error:
+            raise OSError("offline")
+        return self
+
+    async def __aexit__(self, *args):
+        return None
+
+    async def get(self, url, headers=None):
+        self.headers = headers
+        if self.error:
+            raise RuntimeError("boom")
+        return FakeResponse(self.payload)
+
+
+class FakeResponse:
+    def __init__(self, hidden):
+        self._hidden = hidden
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._hidden
+
+
+def test_fetch_latest_version_returns_newest_numeric_tag(monkeypatch):
+    client = FakeClient([{"name": "cron-runner"}, {"name": "v0.2.0"}, {"name": "v0.1.3"}])
+    monkeypatch.setattr(updates.httpx, "AsyncClient", lambda *a, **kw: client)
+    assert updates.fetch_latest_version() == "0.2.0"
+    assert client.headers == {"Accept": "application/vnd.github+json"}
+
+
+def test_fetch_latest_version_fails_silently(monkeypatch):
+    monkeypatch.setattr(
+        updates.httpx, "AsyncClient", lambda *a, **kw: FakeClient(error=True)
+    )
+    assert updates.fetch_latest_version() is None
+    monkeypatch.setattr(
+        updates.httpx, "AsyncClient", lambda *a, **kw: FakeClient([])
+    )
+    assert updates.fetch_latest_version() is None
