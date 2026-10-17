@@ -13,6 +13,8 @@ from .equalizer import BASE_TARGET_LUFS, EqualizerSettings
 from .models import Station, clean, stream_url
 
 METER_FILTER = "@stumble_meter:lavfi=[astats=metadata=1:reset=1]"
+SWAP_TIMEOUT_SECONDS = 20.0
+OBSERVED_PROPERTIES = ("media-title", "pause", "volume", "paused-for-cache", "metadata")
 
 
 class PlayerError(Exception):
@@ -200,42 +202,129 @@ class Player:
             if not shutil.which("mpv"):
                 raise PlayerError("Install mpv for playback (see stumble-radio --doctor).")
             await self._close_mpv()
-            self.tempdir = tempfile.TemporaryDirectory(prefix="stumble-")
-            socket_path = str(Path(self.tempdir.name) / "mpv.sock")
-            self.process = await asyncio.create_subprocess_exec(
-                "mpv",
-                "--no-config",
-                "--idle=yes",
-                "--no-video",
-                "--no-terminal",
-                "--input-default-bindings=no",
-                "--input-vo-keyboard=no",
-                "--ytdl=no",
-                f"--volume={self.output_volume}",
-                "--network-timeout=15",
-                "--cache=yes",
-                f"--af={METER_FILTER}",
-                f"--input-ipc-server={socket_path}",
-                stdin=asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            for _ in range(60):
-                try:
-                    self.reader, self.writer = await asyncio.open_unix_connection(socket_path)
-                    break
-                except (FileNotFoundError, ConnectionRefusedError):
-                    if self.process.returncode is not None:
-                        raise PlayerError("mpv exited during startup. Check your mpv installation.")
-                    await asyncio.sleep(0.05)
-            else:
-                await self._close_mpv()
-                raise PlayerError("Timed out connecting to mpv.")
+            self.process, self.reader, self.writer, self.tempdir = await self._open_instance()
             self.reader_task = asyncio.create_task(self._read_events())
-            for index, name in enumerate(
-                ("media-title", "pause", "volume", "paused-for-cache", "metadata")
-            ):
-                await self.command("observe_property", index, name)
+            await self.observe()
+
+    @property
+    def _live(self) -> bool:
+        return (
+            bool(self.process)
+            and self.process.returncode is None
+            and bool(self.writer)
+            and not self.writer.is_closing()
+            and bool(self.reader_task)
+            and not self.reader_task.done()
+        )
+
+    async def observe(self) -> None:
+        for index, name in enumerate(OBSERVED_PROPERTIES):
+            await self.command("observe_property", index, name)
+
+    async def _open_instance(self, af_chain: str = METER_FILTER):
+        """Spawn a fresh mpv process and return (process, reader, writer, tempdir)."""
+        tempdir = tempfile.TemporaryDirectory(prefix="stumble-")
+        socket_path = str(Path(tempdir.name) / "mpv.sock")
+        process = await asyncio.create_subprocess_exec(
+            "mpv",
+            "--no-config",
+            "--idle=yes",
+            "--no-video",
+            "--no-terminal",
+            "--input-default-bindings=no",
+            "--input-vo-keyboard=no",
+            "--ytdl=no",
+            f"--volume={self.output_volume}",
+            "--network-timeout=15",
+            "--cache=yes",
+            f"--af={af_chain}",
+            f"--input-ipc-server={socket_path}",
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        for _ in range(60):
+            try:
+                reader, writer = await asyncio.open_unix_connection(socket_path)
+                return process, reader, writer, tempdir
+            except (FileNotFoundError, ConnectionRefusedError):
+                if process.returncode is not None:
+                    tempdir.cleanup()
+                    raise PlayerError("mpv exited during startup. Check your mpv installation.")
+                await asyncio.sleep(0.05)
+        await self._dispose(process, writer, tempdir)
+        raise PlayerError("Timed out connecting to mpv.")
+
+    async def _ipc(self, writer, state: dict, /, *args) -> None:
+        request_id = state.get("next", 0) + 1
+        state["next"] = request_id
+        future = asyncio.get_running_loop().create_future()
+        state[request_id] = future
+        writer.write(
+            (json.dumps({"command": args, "request_id": request_id}) + "\n").encode()
+        )
+        await writer.drain()
+        try:
+            result = await asyncio.wait_for(future, timeout=3)
+            if result.get("error") != "success":
+                raise PlayerError(f"mpv: {result.get('error', 'command failed')}")
+        finally:
+            state.pop(request_id, None)
+
+    def _arm_watcher(self, process, reader, state: dict) -> tuple:
+        """Track the secondary instance's socket until it reports a playable file."""
+        loaded = asyncio.get_running_loop().create_future()
+        failed = asyncio.get_running_loop().create_future()
+
+        async def watch() -> None:
+            try:
+                while line := await reader.readline():
+                    try:
+                        message = json.loads(line)
+                    except (ValueError, UnicodeError):
+                        continue
+                    future = state.get(message.get("request_id"))
+                    if future and not future.done():
+                        future.set_result(message)
+                    elif message.get("event") == "file-loaded":
+                        if not loaded.done():
+                            loaded.set_result(True)
+                        return
+                    elif (
+                        message.get("event") in {"end-file", "shutdown"}
+                        or process.returncode is not None
+                    ):
+                        if not failed.done():
+                            failed.set_result(False)
+                        return
+            except OSError:
+                if not failed.done():
+                    failed.set_result(False)
+
+        return loaded, failed, asyncio.create_task(watch())
+
+    async def _settle_load(self, loaded, failed) -> bool:
+        done, _ = await asyncio.wait_for(
+            asyncio.wait({loaded, failed}, return_when=asyncio.FIRST_COMPLETED),
+            timeout=SWAP_TIMEOUT_SECONDS,
+        )
+        return loaded in done
+
+    async def _dispose(self, process, writer, tempdir) -> None:
+        """Terminate an mpv instance that is no longer the active player."""
+        if process and process.returncode is None:
+            process.terminate()
+            try:
+                await asyncio.wait_for(process.wait(), timeout=2)
+            except TimeoutError:
+                process.kill()
+                await process.wait()
+        if writer:
+            writer.close()
+            with suppress(OSError):
+                await writer.wait_closed()
+        if tempdir:
+            tempdir.cleanup()
 
     async def _read_events(self) -> None:
         try:
@@ -288,36 +377,106 @@ class Player:
     async def play(self, station: Station) -> Path | None:
         url = stream_url(station.url)
         async with self.audio_lock:
-            await self.start()
-            self._reset_auto_level()
-            try:
-                if self.equalizer.active and not self.auto_level_disabled_for_session:
-                    await self.check_equalizer_support(auto_level=self.equalizer.auto_level)
-                runtime_settings = self.equalizer
-                if self.auto_level_disabled_for_session:
-                    runtime_settings = EqualizerSettings(self.equalizer.bands, self.equalizer.gain_db, self.equalizer.enabled, auto_level=False)
-                if self.filter_settings.active:
-                    with suppress(PlayerError):
-                        await self.command("af", "remove", "@stumble_eq")
-                    self.filter_settings = EqualizerSettings(auto_level=False)
-                await self.apply_equalizer_filter(runtime_settings)
-            except (PlayerError, OSError) as error:
-                if self.equalizer.auto_level:
-                    self.auto_level_state = "unavailable"
-                    self.auto_level_disabled_for_session = True
-                    with suppress(PlayerError):
-                        await self._restore_manual_equalizer()
-                else:
-                    self.equalizer = EqualizerSettings(enabled=False, auto_level=False)
-                    await self.apply_equalizer_filter(self.equalizer)
-                await self.events.put({"event": "equalizer-error", "error": clean(str(error))})
-            await self.set_volume(self.output_volume)
-            saved = await self.stop_recording()
-            await self.command("set_property", "pause", False)
             self.loading_station = station
-            await self.command("loadfile", url, "replace")
-            self.station = station
-            return saved
+            if self._live:
+                return await self._play_swapping(station, url)
+            return await self._play_started(station, url)
+
+    async def configure_stream(self) -> None:
+        """Prepare the running mpv for a full restart of its playlist."""
+        self._reset_auto_level()
+        try:
+            if self.equalizer.active and not self.auto_level_disabled_for_session:
+                await self.check_equalizer_support(auto_level=self.equalizer.auto_level)
+            runtime_settings = self.equalizer
+            if self.auto_level_disabled_for_session:
+                runtime_settings = EqualizerSettings(self.equalizer.bands, self.equalizer.gain_db, self.equalizer.enabled, auto_level=False)
+            if self.filter_settings.active:
+                with suppress(PlayerError):
+                    await self.command("af", "remove", "@stumble_eq")
+                self.filter_settings = EqualizerSettings(auto_level=False)
+            await self.apply_equalizer_filter(runtime_settings)
+        except (PlayerError, OSError) as error:
+            if self.equalizer.auto_level:
+                self.auto_level_state = "unavailable"
+                self.auto_level_disabled_for_session = True
+                with suppress(PlayerError):
+                    await self._restore_manual_equalizer()
+            else:
+                self.equalizer = EqualizerSettings(enabled=False, auto_level=False)
+                await self.apply_equalizer_filter(self.equalizer)
+            await self.events.put({"event": "equalizer-error", "error": clean(str(error))})
+        await self.set_volume(self.output_volume)
+
+    async def _play_started(self, station: Station, url: str) -> Path | None:
+        await self.start()
+        await self.configure_stream()
+        saved = await self.stop_recording()
+        await self.command("set_property", "pause", False)
+        await self.command("loadfile", url, "replace")
+        self.station = station
+        return saved
+
+    async def _play_swapping(self, station: Station, url: str) -> Path | None:
+        """Load the next station in a second mpv process while this one keeps playing."""
+        chain = METER_FILTER
+        if self.filter_settings.active:
+            chain += f",@stumble_eq:lavfi=[{self.filter_settings.filter_graph()}]"
+        state: dict = {}
+        process, reader, writer, tempdir = None, None, None, None
+        try:
+            process, reader, writer, tempdir = await self._open_instance(chain)
+            loaded, failed, watcher = self._arm_watcher(process, reader, state)
+            try:
+                await self._ipc(writer, state, "loadfile", url, "replace")
+                if await self._settle_load(loaded, failed):
+                    with suppress(asyncio.CancelledError):
+                        await watcher
+                else:
+                    raise PlayerError(f"Timeout while waiting for the stream to start: {station.name}")
+            except BaseException:
+                watcher.cancel()
+                with suppress(asyncio.CancelledError):
+                    await watcher
+                raise
+        except (PlayerError, OSError) as error:
+            await self._dispose(process, writer, tempdir)
+            raise (error if isinstance(error, PlayerError) else PlayerError(str(error) or "mpv did not open the stream.")) from None
+        saved = await self.stop_recording()
+        paused = False
+        with suppress(PlayerError):
+            paused = bool(await self.command("get_property", "pause"))
+        await self.swap(process, reader, writer, tempdir, station, paused)
+        await self.events.put({"event": "start-file", "stationuuid": station.stationuuid})
+        await self.events.put({"event": "file-loaded", "stationuuid": station.stationuuid})
+        return saved
+
+    async def swap(self, process, reader, writer, tempdir, station: Station, paused: bool) -> None:
+        """Promote the secondary instance to the main player."""
+        old_task, old_process, old_writer, old_tempdir = (
+            self.reader_task,
+            self.process,
+            self.writer,
+            self.tempdir,
+        )
+        self.process, self.reader, self.writer, self.tempdir = process, reader, writer, tempdir
+        self.station = station
+        for request_id in list(self.pending):
+            future = self.pending.pop(request_id, None)
+            if future and not future.done():
+                future.set_exception(PlayerError("Connection replaced by the next station."))
+        self.closing_mpv = True
+        if old_task:
+            old_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await old_task
+        self.event_station = self.loading_station = station
+        self.reader_task = asyncio.create_task(self._read_events())
+        self.closing_mpv = False
+        await self.observe()
+        self._reset_auto_level()
+        await self.command("set_property", "pause", paused)
+        await self._dispose(old_process, old_writer, old_tempdir)
 
     async def pause(self) -> None:
         if not self.station:

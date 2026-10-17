@@ -76,19 +76,26 @@ def excerpt(text: str, limit: int = 96) -> str:
 
 
 BLOCK_STEPS = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
+SPINNER_FRAMES = ("◐", "◓", "◑", "◒")
 
 
-def waveform_graph(levels: list[float], columns: int) -> str:
-    """Scrolling bar wave: interpolate midpoints so columns read as a flowing wave."""
+def waveform_graph(levels: list[float], columns: int, lo: float = 0.0, hi: float = 1.0) -> str:
+    """Scrolling bar wave: auto-gained levels with interpolated midpoints."""
     if not levels or columns <= 0:
         return ""
+    span = max(hi - lo, 0.2)
     points = []
     for index, value in enumerate(levels):
-        points.append(value)
+        points.append((value - lo) / span)
         if index + 1 < len(levels):
-            points.append((value + levels[index + 1]) / 2)
+            midpoint = (value + levels[index + 1]) / 2
+            points.append((midpoint - lo) / span)
     points = points[-columns:]
-    return "".join(BLOCK_STEPS[min(8, max(0, round(point * 8)))] for point in points)
+    bars = []
+    for point in points:
+        level = max(0.0, min(1.0, point))
+        bars.append(BLOCK_STEPS[min(8, round(level * 8))])
+    return "".join(bars)
 
 
 class StationTable(DataTable):
@@ -215,6 +222,8 @@ class StumbleRadio(App):
         self.listening_lock = asyncio.Lock()
         self.signal_silent = False
         self.audio_levels: list[float] = []
+        self.wave_lo: float = 0.05
+        self.wave_hi: float = 0.5
         self.user_paused = False
         self.query_error = ""
         self.track_metadata = None
@@ -238,6 +247,7 @@ class StumbleRadio(App):
         self.last_announcement = None
         self.sleep_gain = 1.0
         self.last_pomodoro_save = time.monotonic()
+        self.spinner_frame = 0
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="masthead"):
@@ -352,6 +362,7 @@ class StumbleRadio(App):
         self.set_interval(0.1, self.sample_audio_meter)
         self.set_interval(0.5, self.update_automatic_level)
         self.set_interval(3600, self.prune_track_history)
+        self.set_interval(0.14, self.refresh_spinner)
         self.consume_player_events()
         if not self.offline:
             self.catalogue_loop()
@@ -436,13 +447,42 @@ class StumbleRadio(App):
         self.status_line = f"{suffix} · {level_text}  {self.page_summary}"
         status = self.query_one("#status-line", Static)
         status.tooltip = self.status_line
+        width = status.size.width
+        spinner = self.spinner_message()
         text = self.status_line
-        if cell_len(text) > status.size.width:
+        if cell_len(text) > width:
             short_level = level_text.rsplit(" · ", 1)[0] if level_text.endswith("LUFS") else level_text
             text = f"{suffix} · {short_level}  {self.page_summary}"
-            if cell_len(text) > status.size.width:
+            if cell_len(text) > width:
                 text = f"{suffix} · {short_level}  {self.page_summary.split(' of ')[0]}"
+        if spinner:
+            extra = f"  {spinner}"
+            room = width - cell_len(text) - cell_len(extra)
+            if room >= 0:
+                text += " " * room + extra
+            elif self.page_summary and " of " in self.page_summary:
+                # Keep the spinner even when the station count no longer fits.
+                trimmed = f"{text}  {self.page_summary.split(' of ')[0]}"
+                room = width - cell_len(trimmed) - cell_len(extra)
+                text = trimmed + (" " * room + extra if room >= 0 else extra)
         status.update(text)
+
+    def spinner_message(self) -> str:
+        """Right-hand status indicator while the player finds or buffers a station."""
+        if not self.current:
+            return ""
+        if self.play_state == "TUNING":
+            label = "loading…"
+        elif self.play_state == "BUFFERING":
+            label = "buffering…"
+        else:
+            return ""
+        return f"{SPINNER_FRAMES[self.spinner_frame % len(SPINNER_FRAMES)]} {label}"
+
+    def refresh_spinner(self) -> None:
+        if self.spinner_message():
+            self.spinner_frame += 1
+            self.update_status()
 
     async def update_automatic_level(self) -> None:
         if self.play_state == "PLAYING":
@@ -1785,13 +1825,16 @@ class StumbleRadio(App):
         ):
             meter.update("")
             return
-        graph = waveform_graph(self.audio_levels, min(meter.size.width - 3, 48))
+        graph = waveform_graph(
+            self.audio_levels, min(meter.size.width - 3, 48), self.wave_lo, self.wave_hi
+        )
         meter.update(("♪ " + graph) if graph else "")
 
     @work(group="audio-meter", exclusive=True)
     async def sample_audio_meter(self) -> None:
         if self.size.width < 95 or not self.current or self.play_state != "PLAYING":
             self.audio_levels.clear()
+            self.wave_lo, self.wave_hi = 0.05, 0.5
             self.update_audio_meter()
             return
         station_id = self.current.stationuuid
@@ -1811,6 +1854,8 @@ class StumbleRadio(App):
             level = 0.7 * level + 0.3 * self.audio_levels[-1]
         self.audio_levels.append(level)
         del self.audio_levels[:-64]
+        self.wave_hi = max(level, self.wave_hi - 0.004)
+        self.wave_lo = min(level, self.wave_lo + 0.004)
         self.update_audio_meter()
 
     async def on_unmount(self) -> None:

@@ -147,7 +147,7 @@ class EqualizerScreen(ModalScreen):
             await self.action_cancel()
         elif key == "eq-reset":
             self.query_one("#eq-bypass", Checkbox).value = False
-            self.query_one("#eq-auto-level", Checkbox).value = False
+            self.query_one("#eq-auto-level", Checkbox).value = True
             self.query_one("#eq-gain", Input).value = "0"
             for index in range(5):
                 self.query_one(f"#eq-band-{index}", Input).value = "0"
