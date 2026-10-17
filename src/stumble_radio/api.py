@@ -6,12 +6,13 @@ from uuid import uuid4
 
 import httpx
 
+from . import __version__
 from .db import Database
 from .models import Search, Station
 from .query import search_from_tokens
 
 BOOTSTRAP = "https://all.api.radio-browser.info"
-USER_AGENT = "StumbleRadio/0.1.2"
+USER_AGENT = f"StumbleRadio/{__version__}"
 SYNC_INTERVAL = 24 * 60 * 60
 SYNC_PAGE = 1000
 
