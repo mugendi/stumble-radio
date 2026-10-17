@@ -12,7 +12,7 @@ Choose Favourites to see your saved dial. Switching libraries clears search rest
 
 Press **f** to favourite the station you are listening to: you can only like
 what you have heard. If nothing is playing, **f** acts on the highlighted row
-instead, but first asks whether the station should really change — this prevents
+instead, but first asks whether the station should really change; this prevents
 accidental favourites and removals. While a channel is playing, favouriting and
 unfavouriting apply to it directly, with no confirmation. Matching favourites
 appear first in station lists, including search results. Sorting the ★ column
@@ -123,8 +123,8 @@ count the matching distinct streams.
 
 - On startup, a stale or missing catalogue starts syncing without blocking the UI.
 - The app discovers Radio Browser mirrors, picks a random mirror order, and retries
-  other discovered mirrors on request failures. It sends `StumbleRadio/0.1.0` as
-  its descriptive User-Agent and always bounds station requests with a limit.
+  other discovered mirrors on request failures. It sends the package version as its descriptive User-Agent,
+  for example `StumbleRadio/0.1.4`, and always bounds station requests with a limit.
 - Full downloads use **1,000 records per batch**, with a brief pause between batches.
   Broken station entries are cached too; Explore and Unheard hide them by default.
 - Each batch and its next offset commit in one SQLite transaction. Closing the

@@ -1,4 +1,4 @@
-# STUMBLE ◎ RADIO
+# Stumble Radio
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Built with Textual](https://img.shields.io/badge/TUI-Textual-7C3AED)](https://textual.textualize.io/)
@@ -36,7 +36,7 @@ real terminal radio with a tonne of features. Here is what Stumble Radio can do.
 ## Features
 
 ### Listen, record and drift off
-Truly battery included. Stumble Ration inclides all the playback features I have ever wanted from a radio/music player baked in.
+Truly batteries included. Stumble Radio includes all the playback features I have ever wanted from a radio or music player, baked in.
 
 - Play/pause, previous/next station, volume controls, and broadcaster song metadata.
 - Tune a five-band equalizer and up to +12 dB gain, with presets, live preview and saved settings; automatic loudness leveling starts enabled by default.
@@ -89,7 +89,7 @@ Discovered a gem? Favourite it, always be in a position to step back and find st
 [Favourites, browsing, catalogue sync and storage →](docs/library.md)
 
 ### See where you have been
-As you play music, discover new tunes and develop new tastes, you habits change too. This feature allows you to see what you are spending most time listening to.
+As you play music, discover new tunes and develop new tastes, your habits change too. This feature allows you to see what you are spending most time listening to.
 
 - Open your listening journal for time per station, top stations and recent sessions.
 - Collect a radio passport of countries heard and track country/genre diversity.
@@ -97,7 +97,7 @@ As you play music, discover new tunes and develop new tastes, you habits change 
 [Listening journal and radio passport →](docs/journal.md)
 
 ### Find that song again
-If you are like me, and if you happen to [teleport](#discover-somewhere-new) around as much as I do, then you know that situation where you remember listening to  Lupe Fiasco song but cannot remember what channel it was. This feature keeps a track of your listening history and allows you to jump back and rediscover gems for up to 1 year! Simply press `l` (Last Play) and search for "Lupe..."!
+If you are like me, and if you happen to [teleport](#discover-somewhere-new) around as much as I do, then you know that situation where you remember listening to a Lupe Fiasco song but cannot remember what channel it was. This feature keeps a track of your listening history and allows you to jump back and rediscover gems for up to 1 year! Simply press `l` (Last Play) and search for "Lupe..."!
 
 - **Last Play Search:** search remembered artists, songs or stations you heard.
 - See where and when you heard each track, newest first, and tune that station.
@@ -108,7 +108,7 @@ If you are like me, and if you happen to [teleport](#discover-somewhere-new) aro
 ### Why PODMORO in a radio app?
 Wait, I can explain. And I believe it makes sense too.
 
-Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro scheduler so you can receive periodic musc interruptions reminding you to hug your cat. Even better is that you get to record and customize your reminders yourself, in your own voice or have your loved one'd voice remind you. You will likely heed to that voice more.
+Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro scheduler so you can receive periodic music interruptions reminding you to hug your cat. Even better is that you get to record and customize your reminders yourself, in your own voice, or a loved one's voice. You will likely heed that voice more.
 
 - **PODMORO:** custom focus/break profiles, weekly schedules and daily focus totals.
 - Interrupt the music with your own MP3 voice prompts for breaks or reminders.
@@ -137,7 +137,8 @@ Press **s** to Stumble, **t** to Teleport,
 
 [Installation, audio dependencies and first launch](docs/getting-started.md) ·
 [Troubleshooting](docs/troubleshooting.md) ·
-[Development](docs/development.md)
+[Development](docs/development.md) ·
+[Full feature guide](docs/features.md)
 
 ## Contributing
 
@@ -145,7 +146,7 @@ Bug reports, ideas, and pull requests are welcome. For local setup, project
 structure, and development checks, see the [development guide](docs/development.md).
 
 ## Coming soon
-We can still do better with catrgorizing these radio stations. Also the radio browser api that we rely on has a lot of repeated channels (about 12k), misspellings and more. We need cleaner data. 
+We can still do better with categorizing these radio stations. Also the radio browser api that we rely on has a lot of repeated channels (about 12k), misspellings and more. We need cleaner data. 
 
 I plan to embark on this task soon. If you know another (cleaner) free api, please share.
 

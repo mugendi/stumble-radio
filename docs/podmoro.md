@@ -136,13 +136,13 @@ same folder will serve profiles with different durations.
 
 | Folder | When it is used | Example wording for your recording |
 | --- | --- | --- |
-| `focus-start` | At the beginning of each focus block | “Time to focus.” |
-| `focus-ending` | Before focus ends, if the profile's focus warning is enabled | “Your break is coming up.” |
-| `short-break-start` | At the start of a short break | “Take a short break.” |
-| `long-break-start` | At the start of a long break | “Time for a longer break.” |
-| `break-ending` | Before a break ends, if the profile's break warning is enabled | “Get ready to return.” |
-| `session-complete` | After the final focus block of a profile with a nonzero block limit | “Your session is complete.” |
-| `reminders/water` | When a reminder rule references this folder | “Time for some water.” |
+| `focus-start` | At the beginning of each focus block | "Time to focus." |
+| `focus-ending` | Before focus ends, if the profile's focus warning is enabled | "Your break is coming up." |
+| `short-break-start` | At the start of a short break | "Take a short break." |
+| `long-break-start` | At the start of a long break | "Time for a longer break." |
+| `break-ending` | Before a break ends, if the profile's break warning is enabled | "Get ready to return." |
+| `session-complete` | After the final focus block of a profile with a nonzero block limit | "Your session is complete." |
+| `reminders/water` | When a reminder rule references this folder | "Time for some water." |
 | `reminders/stretch` | When a reminder rule references this folder | Your own short stretch prompt |
 | `reminders/eyes` | When a reminder rule references this folder | Your own short screen-break prompt |
 

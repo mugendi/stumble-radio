@@ -34,7 +34,7 @@ station list. `Ctrl+Q` quits even while an input has focus.
 | `Enter` | Play the highlighted station |
 | Right-click a station / `i` | Edit station notes and personal tags |
 | `e` | Open equalizer, gain and presets |
-| `Space` | Pause/resume; play the selected station if stopped |
+| `Space` | Pause/resume; play the selected station if stopped, or resume the last-heard station at launch |
 | `n` / `p` | Next/previous station within the visible results page, wrapping at the ends |
 | `f` | Favourite the **playing** channel; if nothing is playing, confirm before acting on the **highlighted** station |
 | `Ctrl+B` | Open the quick tune picker for this results page |
@@ -56,6 +56,10 @@ where the sidebar is hidden. A library change clears filters so saved stations
 are easy to find. The **Quick tune** button beside **Search** opens the
 quick picker; its text box filters the current page, and you can use the
 main search or advanced filters to search the entire catalogue.
+
+Space also picks up where you left off: at launch it resumes the last station
+you heard, shown before playback starts as a `▶ LAST · … · Space resumes` chip
+in the sidebar.
 
 Press **?** for a help overlay with these shortcuts and a few search examples.
 

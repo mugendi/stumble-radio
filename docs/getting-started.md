@@ -6,7 +6,7 @@ Screenshots show the actual interface with real stations and demonstration liste
 
 ![Stumble Radio playing a station, with transport controls, station browser and now-playing information](images/player.png)
 
-The station list is in the centre, details are on the left, and playback stays visible along the bottom. The details pane labels every property — `STATION:`, `COUNTRY:`, `GENRE:`, `FORMAT:`, `VOTES:`, `PLAYTIME:` and your `NOTES:` + `TAGS:` for the highlighted channel, with `PLAYTIME: Never played` appearing for stations you have never listened to.
+The station list is in the centre, details are on the left, and playback stays visible along the bottom. The details pane labels every property: `STATION:`, `COUNTRY:`, `GENRE:`, `FORMAT:`, `VOTES:`, `PLAYTIME:` and your `NOTES:` + `TAGS:` for the highlighted channel, with `PLAYTIME: Never played` appearing for stations you have never listened to.
 
 ## Quick install
 
@@ -79,7 +79,7 @@ Stumble Radio checks GitHub for a newer release when it starts and caches the
 answer for a day, so at most one small request is made per launch. When a
 newer version exists, a toast tells you and the app remembers it: press `U`
 (uppercase; lowercase `u` refreshes online filters), confirm, and the app
-stops cleanly — without cutting a recording or losing your Podmoro timer —
+stops cleanly (without cutting a recording or losing your Podmoro timer),
 runs `uv tool install --upgrade` with the same source it was installed from,
 then relaunches itself with the new version. A failed update leaves the app
 running untouched. If you installed the radio differently (source tree,
@@ -149,6 +149,7 @@ and recordings paths. It does not start audio or contact the directory.
 On a fresh empty cache, Stumble can ask the API for random candidates without
 waiting for the full catalogue. Search starts locally: use **Online ↻** / **u**
 in Explore to fetch matching stations before the background download reaches them.
-The app never autoplays on launch.
+The app never autoplays on launch. The station you last heard shows as a
+`▶ LAST · … · Space resumes` chip so one keypress picks it up again.
 
 See the [keyboard controls](playback.md#controls), [search guide](search.md), and [troubleshooting guide](troubleshooting.md).

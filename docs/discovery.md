@@ -8,7 +8,7 @@ Screenshots show the actual interface with real stations and demonstration liste
 
 The destination and shuffle mode stay above the browser. Here the destination is Japan and the next Stumble will use Music-only; the table itself remains your current library.
 
-**Teleport** chooses uniformly among countries with eligible cached stations,
+Teleport chooses uniformly among countries with eligible cached stations,
 animates a spinning destination header, and tunes there. When more than one
 country is available, it avoids the currently playing country. Teleport clears
 the station-name, country, region, and radius restrictions for the trip; language,
@@ -25,7 +25,7 @@ The destination remains in the header after landing.
 During the spin the header cycles through candidate destinations while playback
 stays paused; the app applies only cached, eligible stations.
 
-**Hot/Cold learning** stays entirely in SQLite:
+Hot/Cold learning stays entirely in SQLite:
 
 - Switching away after **less than 10 seconds of measured listening** excludes
   that station from random selection for **24 hours**. Pausing, quitting, a sleep
@@ -86,8 +86,6 @@ set instead, so you are never blocked. Teleport is not affected.
 Open Ctrl+G to set Your language and Nearby preferences, or adjust the startup/silence timeout.
 
 ![Discovery settings for preferred language, coordinates, radius and dead-stream timeout](images/discovery-settings.png)
-
-Open Ctrl+G to set Your language and Nearby preferences, or adjust the startup/silence timeout.
 
 For automatic retries and dead-stream replacement, see [playback recovery](playback.md#reconnection-internet-outages-and-dead-streams).
 To combine a pool with country, genre or other conditions, see [search](search.md).
