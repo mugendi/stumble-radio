@@ -1,4 +1,4 @@
-# Stumble Radio
+# STUMBLE ◎ RADIO
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Built with Textual](https://img.shields.io/badge/TUI-Textual-7C3AED)](https://textual.textualize.io/)
