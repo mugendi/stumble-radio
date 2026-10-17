@@ -1108,3 +1108,55 @@ async def test_destination_line_shows_station_local_time(db, station, tmp_path, 
         app.refresh_station_clock()
         await pilot.pause()
         assert "09:42 there" in str(line.render())
+
+
+async def test_stumble_filters_candidates_to_daypart(db, station, monkeypatch, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        import stumble_radio.app as app_module
+
+        calls = []
+        morning, afternoon, midnight = (
+            replace(station, stationuuid="ke", countrycode="KE"),
+            replace(station, stationuuid="gb", countrycode="GB"),
+            replace(station, stationuuid="fj", countrycode="FJ"),
+        )
+
+        def fake_find(search, mode, pool, exclude, limit=8):
+            calls.append(limit)
+            return [morning, afternoon, midnight]
+
+        monkeypatch.setattr(app.db, "discover", fake_find)
+        hours = {"KE": 8, "GB": 15, "FJ": 22}
+        monkeypatch.setattr(app_module, "local_hour", lambda cc, when=None: hours.get(cc))
+        app.daypart = "afternoon"
+        await app.action_stumble().wait()
+        await pilot.pause()
+        assert 64 in calls
+        assert app.current and app.current.countrycode == "GB"
+
+
+async def test_stumble_falls_back_when_bucket_empty(db, station, monkeypatch, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        import stumble_radio.app as app_module
+
+        night = replace(station, stationuuid="fj", countrycode="FJ")
+        calls = []
+
+        def fake_find(search, mode, pool, exclude, limit=8):
+            calls.append(limit)
+            return [night]
+
+        monkeypatch.setattr(app.db, "discover", fake_find)
+        monkeypatch.setattr(app_module, "local_hour", lambda cc, when=None: 22)
+        notices: list[str] = []
+        monkeypatch.setattr(app, "notify", lambda message, **_: notices.append(message))
+        app.daypart = "breakfast"
+        await app.action_stumble().wait()
+        await pilot.pause()
+        assert calls == [64, 8]
+        assert app.current and app.current.countrycode == "FJ"
+        assert any("landing anywhere" in text for text in notices)

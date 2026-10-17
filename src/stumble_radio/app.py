@@ -21,7 +21,7 @@ from textual.widgets import Button, DataTable, Footer, Input, Select, Static
 from .announcements import AnnouncementPlayer, AudioLibrary
 from .api import DirectoryError, RadioBrowser, sync_catalogue
 from .db import PAGE_SIZE, Database
-from .discovery import MAX_RECOVERY_ATTEMPTS, POOL_MODES, DiscoverySettings
+from .discovery import DAYPART_BATCH, MAX_RECOVERY_ATTEMPTS, POOL_MODES, DiscoverySettings
 from .equalizer import EqualizerSettings
 from .equalizer_screen import EqualizerScreen
 from .models import SORTS, Search, Station, clean
@@ -49,7 +49,7 @@ from .updates import (
     run_upgrade,
     uv_command,
 )
-from .world_times import daypart_label, local_time
+from .world_times import daypart_label, local_hour, local_time, zone_for_daypart
 
 
 def restore_volume(value: str) -> int:
@@ -1356,7 +1356,20 @@ class StumbleRadio(App):
             return
         try:
             exclude = (self.current.stationuuid,) if self.current else ()
-            rows = await asyncio.to_thread(self.db.discover, search, self.mode, self.pool, exclude)
+            if self.daypart:
+                wide = await asyncio.to_thread(
+                    self.db.discover, search, self.mode, self.pool, exclude, limit=DAYPART_BATCH
+                )
+                window = zone_for_daypart(self.daypart)
+                label = daypart_label(self.daypart) or self.daypart
+                rows = [s for s in wide if local_hour(s.countrycode) in window]
+                if not rows:
+                    self.notify(f"No {label} broadcasts found · landing anywhere", markup=False)
+                    rows = await asyncio.to_thread(
+                        self.db.discover, search, self.mode, self.pool, exclude
+                    )
+            else:
+                rows = await asyncio.to_thread(self.db.discover, search, self.mode, self.pool, exclude)
             if not rows and not self.offline and self.mode in {"browse", "unheard"}:
                 fetched = await self.api.search(search, limit=100, random_order=True)
                 await asyncio.to_thread(self.db.upsert, fetched)

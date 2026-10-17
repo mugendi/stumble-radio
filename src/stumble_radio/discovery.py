@@ -9,6 +9,7 @@ from .models import Search
 POOL_MODES = ("Anywhere", "Music-only", "Talk/News", "Your language", "Nearby", "Hidden gems")
 GEM_VOTES = 10
 GEM_CLICKS = 15
+DAYPART_BATCH = 64
 QUICK_SKIP_SECONDS = 10
 HOT_SECONDS = 60
 SKIP_COOLDOWN = 24 * 3600
