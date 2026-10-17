@@ -6,7 +6,9 @@ from dataclasses import dataclass
 
 from .models import Search
 
-POOL_MODES = ("Anywhere", "Music-only", "Talk/News", "Your language", "Nearby")
+POOL_MODES = ("Anywhere", "Music-only", "Talk/News", "Your language", "Nearby", "Hidden gems")
+GEM_VOTES = 10
+GEM_CLICKS = 15
 QUICK_SKIP_SECONDS = 10
 HOT_SECONDS = 60
 SKIP_COOLDOWN = 24 * 3600

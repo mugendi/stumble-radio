@@ -7,6 +7,8 @@ from pathlib import Path
 
 from .discovery import (
     DEAD_COOLDOWN,
+    GEM_CLICKS,
+    GEM_VOTES,
     HOT_SECONDS,
     QUICK_SKIP_SECONDS,
     SKIP_COOLDOWN,
@@ -569,6 +571,8 @@ class Database:
         )
         if pool == "Talk/News":
             where += " AND " + talk
+        elif pool == "Hidden gems":
+            where += f" AND s.votes<={GEM_VOTES} AND s.clickcount<={GEM_CLICKS}"
         elif pool == "Music-only":
             music = (
                 "music",

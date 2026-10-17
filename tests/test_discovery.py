@@ -1,9 +1,11 @@
 import random
 import sqlite3
 import time
+from dataclasses import replace
 
 import pytest
 
+from stumble_radio import discovery
 from stumble_radio.db import Database
 from stumble_radio.discovery import DiscoverySettings, diversity_score, shuffle_key
 from stumble_radio.models import Search
@@ -43,6 +45,41 @@ def test_shuffle_modes_and_country_pool(db):
     assert [s.countrycode for s in db.discover(Search(), pool="Talk/News")] == ["GB"]
     assert db.countries(Search()) == [("GB", "United Kingdom"), ("KE", "Kenya")]
     assert db.countries(Search(language="swahili")) == [("KE", "Kenya")]
+
+
+def test_hidden_gems_pool_filters_low_engagement(db, station):
+    gem = replace(
+        station,
+        stationuuid="gem",
+        url="https://example.test/gem",
+        name="Island Whispers",
+        country="Fiji",
+        countrycode="FJ",
+        tags="ambient",
+        language="english",
+        votes=3,
+        clickcount=5,
+    )
+    popular = replace(
+        station,
+        stationuuid="popular",
+        url="https://example.test/popular",
+        name="Mega Pop",
+        country="Kenya",
+        countrycode="KE",
+        tags="pop",
+        language="english",
+    )
+    db.upsert([gem, popular])
+    gems = [s.stationuuid for s in db.discover(Search(), pool="Hidden gems")]
+    assert gem.stationuuid in gems
+    assert popular.stationuuid not in gems
+    anywhere = [s.stationuuid for s in db.discover(Search(), pool="Anywhere")]
+    assert {gem.stationuuid, popular.stationuuid} <= set(anywhere)
+
+
+def test_hidden_gems_is_a_pool_mode():
+    assert discovery.POOL_MODES.index("Hidden gems") == discovery.POOL_MODES.index("Nearby") + 1
 
 
 def test_dead_station_cooldown_and_expiry(db, station, monkeypatch):
