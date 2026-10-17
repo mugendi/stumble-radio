@@ -50,7 +50,8 @@ class FakeClient:
         return None
 
     async def get(self, url, headers=None):
-        self.headers = headers
+        if headers is not None:
+            self.headers = headers
         if self.error:
             raise RuntimeError("boom")
         return FakeResponse(self.payload)
