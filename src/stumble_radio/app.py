@@ -49,6 +49,7 @@ from .updates import (
     run_upgrade,
     uv_command,
 )
+from .world_times import daypart_label, local_time
 
 
 def restore_volume(value: str) -> int:
@@ -261,6 +262,8 @@ class StumbleRadio(App):
         self.update_available: str | None = None
         self.update_checked_at = 0.0
         self.relaunch_requested = False
+        self.daypart = ""
+        self.station_clock: tuple[int, int] | None = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="masthead"):
@@ -303,6 +306,18 @@ class StumbleRadio(App):
                     value="browse",
                     allow_blank=False,
                     id="library",
+                )
+                yield Static("STATION SYNC", classes="sync-caption", markup=False)
+                yield Select(
+                    [
+                        ("Off", ""),
+                        ("Breakfast Shows", "breakfast"),
+                        ("Afternoon Shows", "afternoon"),
+                        ("Evening Shows", "evening"),
+                        ("Late Night Shows", "late"),
+                    ],
+                    allow_blank=False,
+                    id="sync-by",
                 )
                 yield Static("Select a station to see its details.", id="detail", markup=False)
                 yield Static("Sleep timer · off", id="timer")
@@ -354,6 +369,12 @@ class StumbleRadio(App):
                 self.settings = DiscoverySettings(**json.loads(saved))
             except (ValueError, TypeError):
                 self.notify("Discovery settings were invalid; using defaults.", severity="warning")
+        saved_daypart = await asyncio.to_thread(self.db.metadata, "sync_daypart")
+        if saved_daypart:
+            try:
+                self.query_one("#sync-by", Select).value = json.loads(saved_daypart)
+            except (ValueError, TypeError):
+                self.notify("Saved time sync was invalid; using Off.", severity="warning")
         self.update_discovery_line()
         await self.refresh_library()
         saved_pomodoro = await asyncio.to_thread(self.db.metadata, "pomodoro_v1")
@@ -376,6 +397,7 @@ class StumbleRadio(App):
         self.set_interval(0.5, self.update_automatic_level)
         self.set_interval(3600, self.prune_track_history)
         self.set_interval(0.14, self.refresh_spinner)
+        self.set_interval(60, self.refresh_station_clock)
         self.consume_player_events()
         self.check_for_updates()
         if not self.offline:
@@ -505,9 +527,16 @@ class StumbleRadio(App):
 
     def update_discovery_line(self):
         text = f"{self.catalogue_count:,} stations cached | Shuffle · {self.pool}"
+        if self.daypart:
+            label = daypart_label(self.daypart) or self.daypart
+            text = f"{text} · {label}"
         discovery = self.query_one("#discovery-line", Static)
         discovery.tooltip = text
-        discovery.update(f"Shuffle · {self.pool}" if self.size.width < 70 else text)
+        discovery.update(
+            (f"Shuffle · {self.pool}" + (f" · {daypart_label(self.daypart)}" if self.daypart else ""))
+            if self.size.width < 70
+            else text
+        )
 
     def update_destination_line(self, flight: str = ""):
         if flight:
@@ -516,9 +545,20 @@ class StumbleRadio(App):
             text = f"◎ LANDED · {self.destination}"
         else:
             text = f"◎ {self.destination}"
+        self.station_clock = local_time(self.current.countrycode) if self.current else None
+        if self.station_clock and not flight:
+            hours, minutes = self.station_clock
+            text = f"{text} · {hours:02d}:{minutes:02d} there"
         destination = self.query_one("#destination-line", Static)
         destination.update(text)
         destination.tooltip = text
+
+    def refresh_station_clock(self) -> None:
+        if not self.current:
+            return
+        minutes = local_time(self.current.countrycode)
+        if minutes != self.station_clock:
+            self.update_destination_line()
 
     def update_cache(self) -> dict | None:
         try:
@@ -911,6 +951,16 @@ class StumbleRadio(App):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "library" and isinstance(event.value, str):
             self.set_library(event.value)
+        elif event.select.id == "sync-by":
+            self.set_daypart(event.value if isinstance(event.value, str) else "")
+
+    def set_daypart(self, slug: str) -> None:
+        self.daypart = slug or ""
+        self.run_worker(
+            asyncio.to_thread(self.db.set_metadata, "sync_daypart", json.dumps(self.daypart)),
+            group="settings",
+        )
+        self.update_discovery_line()
 
     def set_library(self, mode: str) -> None:
         self.mode, self.offset = mode, 0
@@ -1400,6 +1450,9 @@ class StumbleRadio(App):
                 if self.notes_hint_count > 3:
                     self.query_one(StationTable).tooltip = None
             self.current = station
+            if station.country:
+                self.destination, self.destination_landed = station.country, True
+            self.update_destination_line()
             self.update_pinned_station()
             self.load_library()
             self.user_paused = False

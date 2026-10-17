@@ -354,7 +354,9 @@ async def test_teleport_changes_country_and_animates_header(db, tmp_path):
         await pilot.pause()
         assert app.current.countrycode == "GB"
         assert app.destination == "United Kingdom" and app.automatic
-        assert str(app.query_one("#destination-line", Static).content) == "◎ LANDED · United Kingdom"
+        assert str(app.query_one("#destination-line", Static).content).startswith(
+            "◎ LANDED · United Kingdom"
+        )
         assert app.query_one("#discovery-line").region.y == app.query_one("#podmoro-line").region.y
         assert app.query_one("#quick-search").region.y > app.query_one("#transport").region.bottom
 
@@ -934,7 +936,10 @@ async def test_status_spinner_tracks_loading_and_buffering(db, station, tmp_path
         assert "buffering…" not in str(status.content)
 
 
-async def test_updates_cached_hint_shows_even_offline(db, station, tmp_path):
+async def test_updates_cached_hint_shows_even_offline(db, station, tmp_path, monkeypatch):
+    import stumble_radio.app as app_module
+
+    monkeypatch.setattr(app_module, "installed_version", lambda: "0.1.2")
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
@@ -950,7 +955,7 @@ async def test_updates_cached_hint_shows_even_offline(db, station, tmp_path):
         await pilot.pause()
         assert app.update_available == "0.1.4"
 
-    db.set_metadata("update_check", json.dumps({"checked": time.time() - 100, "latest": "0.1.3"}))
+    db.set_metadata("update_check", json.dumps({"checked": time.time() - 100, "latest": "0.1.2"}))
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
@@ -964,6 +969,7 @@ async def test_updates_stale_cache_triggers_fetch_and_persists(db, station, monk
     db.set_metadata("last_sync", str(time.time()))
     import stumble_radio.app as app_module
 
+    monkeypatch.setattr(app_module, "installed_version", lambda: "0.1.2")
     monkeypatch.setattr(app_module, "fetch_latest_version", lambda: "0.1.4")
     app = StumbleRadio(db, tmp_path, offline=False, api=OfflineAPI(), player=FakePlayer())
     async with app.run_test(size=(120, 40)) as pilot:
@@ -1045,3 +1051,60 @@ async def test_update_flow_confirms_upgrades_and_hands_off(db, station, tmp_path
         await worker.wait()
         await pilot.pause()
         assert not app2.relaunch_requested
+
+
+async def test_station_sync_ui_arms_and_persists(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        children = list(app.query_one("#sidebar").children)
+        kinds = []
+        for child in children:
+            if child.id:
+                kinds.append(child.id)
+            elif child.classes:
+                kinds.append(next(iter(child.classes)))
+        assert "library" in kinds
+        assert kinds.index("library") < kinds.index("sync-caption") < kinds.index("detail")
+        # The button flow was dropped in favour of the dropdown alone; a blank
+        # line separates the sync section from the station info panel.
+        assert not app.query("#sync-my-time")
+        assert app.query_one("#sync-by", Select).region.bottom < app.query_one("#detail").region.y
+
+        sync_by = app.query_one("#sync-by", Select)
+        sync_by.value = "evening"
+        await pilot.pause()
+        assert app.daypart == "evening"
+        assert db.metadata("sync_daypart") == json.dumps("evening")
+
+        sync_by.value = ""
+        await pilot.pause()
+        assert app.daypart == ""
+        assert db.metadata("sync_daypart") == json.dumps("")
+
+
+async def test_sync_daypart_restored_on_launch(db, station, tmp_path):
+    db.set_metadata("sync_daypart", json.dumps("late"))
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        assert app.daypart == "late"
+        assert app.query_one("#sync-by", Select).value == "late"
+
+
+async def test_destination_line_shows_station_local_time(db, station, tmp_path, monkeypatch):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        import stumble_radio.app as app_module
+
+        monkeypatch.setattr(app_module, "local_time", lambda _cc: (9, 41))
+        app.manual_tune(station)
+        await pilot.pause()
+        line = app.query_one("#destination-line", Static)
+        assert "09:41 there" in str(line.render())
+        # A minute later the clock refreshes with the (faked) next minute.
+        monkeypatch.setattr(app_module, "local_time", lambda _cc: (9, 42))
+        app.refresh_station_clock()
+        await pilot.pause()
+        assert "09:42 there" in str(line.render())
