@@ -28,7 +28,9 @@ def test_daypart_edges_map_only_valid_hours():
 def test_local_hour_resolves_zone_and_unknowns():
     moment = datetime(2026, 10, 18, 9, 41, tzinfo=UTC)
     assert world_times.local_hour("KE", moment) == 12
+    assert world_times.local_time("KE", moment) == (12, 41)
     assert world_times.local_hour("XXX", moment) is None
+    assert world_times.local_time("XXX", moment) is None
     bad = dict(world_times.CC_TZS, QA="Nonexistent/Zone")
     orig = world_times.CC_TZS
     world_times.CC_TZS = bad

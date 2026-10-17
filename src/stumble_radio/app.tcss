@@ -20,6 +20,8 @@ Button.-primary:hover { background: #98eedb; }
 #body { width: 100%; height: 1fr; padding: 0 2; }
 #sidebar { width: 28; padding: 0 1 0 0; }
 #library { margin-bottom: 1; }
+.sync-caption { color: #68ddc4; text-style: bold; }
+#sync-by { width: 1fr; margin-bottom: 1; }
 #detail { height: 1fr; color: #aab9c8; overflow-y: auto; }
 #timer { height: 2; color: #eebc78; }
 #browser { width: 1fr; }

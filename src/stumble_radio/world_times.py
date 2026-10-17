@@ -263,8 +263,8 @@ DAYPART_WINDOWS = {
 }
 
 
-def local_hour(countrycode: str, when: datetime | None = None) -> int | None:
-    """Hour of day at a station's representative zone; None when unknown."""
+def local_time(countrycode: str, when: datetime | None = None) -> tuple[int, int] | None:
+    """(hour, minute) at a station's representative zone; None when unknown."""
     zone = CC_TZS.get((countrycode or "").upper())
     if not zone:
         return None
@@ -272,7 +272,12 @@ def local_hour(countrycode: str, when: datetime | None = None) -> int | None:
         local = (when or datetime.now().astimezone()).astimezone(ZoneInfo(zone))
     except (KeyError, ValueError, OSError):  # missing tz database or bad zone
         return None
-    return local.hour
+    return local.hour, local.minute
+
+
+def local_hour(countrycode: str, when: datetime | None = None) -> int | None:
+    hour_minute = local_time(countrycode, when)
+    return hour_minute[0] if hour_minute else None
 
 
 def daypart_for(hour: int) -> str:
