@@ -8,18 +8,19 @@ from stumble_radio import world_times
 
 def test_daypart_edges_map_only_valid_hours():
     expect = {
-        5: "Late Night Shows",
-        6: "Breakfast Shows",
-        9: "Breakfast Shows",
-        10: "Afternoon Shows",
-        16: "Afternoon Shows",
-        17: "Evening Shows",
-        21: "Evening Shows",
-        22: "Late Night Shows",
-        2: "Late Night Shows",
+        5: "late",
+        6: "breakfast",
+        9: "breakfast",
+        10: "afternoon",
+        16: "afternoon",
+        17: "evening",
+        21: "evening",
+        22: "late",
+        2: "late",
     }
-    for hour, label in expect.items():
-        assert world_times.daypart_for(hour) == label
+    for hour, slug in expect.items():
+        assert world_times.daypart_for(hour) == slug
+    assert world_times.daypart_label(world_times.daypart_for(7)) == "Breakfast Shows"
     with pytest.raises(ValueError):
         world_times.daypart_for(24)
 
