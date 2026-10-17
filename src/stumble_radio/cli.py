@@ -14,6 +14,14 @@ def default_data_dir() -> Path:
     return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "stumble-radio"
 
 
+def relaunch_process(argv: list[str]) -> None:
+    try:
+        os.execv(argv[0], argv)
+    except OSError as error:
+        print(f"Stumble Radio was updated but could not relaunch itself: {error}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stumble Radio — a radio for curious ears.")
     parser.add_argument("--version", action="version", version=f"Stumble Radio {__version__}")
@@ -53,4 +61,8 @@ def main() -> None:
         db = Database(data_dir / "radio.sqlite3")
     except (OSError, sqlite3.Error) as error:
         parser.exit(1, f"Cannot open station database: {error}\n")
-    StumbleRadio(db, recordings, offline=args.offline).run()
+    app = StumbleRadio(db, recordings, offline=args.offline)
+    app.run()
+    if app.relaunch_requested and os.name == "posix" and sys.argv and sys.argv[0]:
+        print("Relaunching Stumble Radio…")
+        relaunch_process(list(sys.argv))
