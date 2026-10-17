@@ -6,7 +6,7 @@ Screenshots show the actual interface with real stations and demonstration liste
 
 ![Stumble Radio playing a station, with transport controls, station browser and now-playing information](images/player.png)
 
-The station list is in the centre, details are on the left, and playback stays visible along the bottom.
+The station list is in the centre, details are on the left, and playback stays visible along the bottom. The details pane labels every property — `STATION:`, `COUNTRY:`, `GENRE:`, `FORMAT:`, `VOTES:`, `PLAYTIME:` and your `NOTES:` + `TAGS:` for the highlighted channel, with `PLAYTIME: Never played` appearing for stations you have never listened to.
 
 ## Quick install
 

@@ -9,6 +9,11 @@ Screenshots show the actual interface with real stations and demonstration liste
 Use the top controls or keyboard shortcuts. The centre media icon switches between Play and Pause; the bottom panel follows the playing station while you browse.
 Quick tune sits beside Search, while PODMORO is right aligned; Last Play stays one keypress away with `l` or `Ctrl+L`. On narrow terminals, PODMORO moves to the right side of the second control row.
 
+Switching stations is gapless: while the new channel buffers in a second player, the
+current one keeps playing, and the swap only happens once the next stream can start.
+The status bar shows a right-handed `loading…` spinner while this transfer is under
+way, and the same slot reports `buffering…` when mpv pauses for cache.
+
 ## Controls
 
 Single-letter shortcuts apply outside text fields. When typing into an input,
@@ -21,7 +26,7 @@ station list. `Ctrl+Q` quits even while an input has focus.
 | `t` | Teleport to a random country and station |
 | `m` | Cycle the session shuffle pool |
 | `/` | Open listening journal, stats, and radio passport |
-| `l` / `Ctrl+L` | Open Last Play Search (also the Last Play button); Ctrl+L works inside inputs |
+| `l` / `Ctrl+L` | Open Last Play Search; Ctrl+L works inside inputs |
 | `Ctrl+F` | Open advanced search (also the Search button) |
 | `Ctrl+G` | Set preferred language, location, and recovery timeout |
 | `Ctrl+O` | Open the right-aligned PODMORO scheduler button |
@@ -74,7 +79,7 @@ all stations, including after changing stations, reconnecting, or restarting.
   presets change the EQ bands while keeping your gain setting. Band settings that
   do not match a preset show **Custom**.
 - **Bypass** temporarily disables both EQ and gain without losing their values.
-  **Reset** enables processing with flat bands and zero gain.
+  **Reset** enables processing with flat bands, zero gain, and automatic leveling.
 
 Changes preview live after a 200 ms pause in editing. **Save** or **Ctrl+S** keeps
 the setup; **Cancel** or **Escape** restores the sound from when you opened the
