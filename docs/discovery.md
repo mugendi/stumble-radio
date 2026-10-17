@@ -48,6 +48,7 @@ Press **m** (shown in the bottom key strip) to cycle the pool used by your *next
 | Talk/News | Tags containing talk, news, speech, or sports |
 | Your language | Your saved language, overriding the language search field |
 | Nearby | Your saved coordinates and radius, overriding the geographic search fields |
+| Hidden gems | Stations with at most 10 votes and 15 clicks, so under-discovered channels surface first |
 
 The active mode appears above the station browser. These modes change random
 selection; they do not rewrite the station table's search. Stumble remains bounded
@@ -60,6 +61,29 @@ latitude, longitude, and radius. Choosing a mode that needs missing information
 opens this form; save it, then press `s`. No IP geolocation or device location is
 collected. Settings persist, while the selected shuffle mode resets to Anywhere
 on launch. Nearby can match only stations that supply coordinates.
+
+## Sync to the station's daytime
+
+The sidebar has a **Station Sync** dropdown next to the shuffle mode. Choose
+*Breakfast Shows*, *Afternoon Shows*, *Evening Shows*, or *Late Night Shows* to
+make your next Stumbles land where the local radio day is currently in that
+phase: 06–10, 10–17, 17–22, and 22–24 plus 00–06 respectively. The choice is
+shown above the browser (for example `Shuffle · Anywhere · Afternoon Shows`),
+persists across restarts, and the station chip in the sidebar shows a live
+local time for the playing country.
+
+Hours are approximated with one representative timezone per country, so very
+large countries (the United States, Russia, Canada) are treated as a whole;
+cities outside the representative zone may land an hour or two off. Stations
+without a known country cannot be matched and are skipped.
+
+Stumbling with sync active draws up to 64 fresh candidates from the active
+pool, keeping list order, and only lands on those whose local hour is inside
+the selected window. If none fit, stumbles notify
+`No afternoon broadcasts found · landing anywhere` and pick from the unsynced
+set instead, so you are never blocked. Teleport is not affected.
+
+Open Ctrl+G to set Your language and Nearby preferences, or adjust the startup/silence timeout.
 
 ![Discovery settings for preferred language, coordinates, radius and dead-stream timeout](images/discovery-settings.png)
 

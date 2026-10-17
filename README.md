@@ -57,7 +57,9 @@ It is truly interesting.
 
 - **Stumble:** random radio that learns from quick skips and longer listens.
 - **Teleport:** spin through country names, land somewhere, and listen there.
-- **Shuffle modes:** Anywhere, Music-only, Talk/News, Your language, and Nearby.
+- **Shuffle modes:** Anywhere, Music-only, Talk/News, Your language, Nearby, and Hidden gems.
+- **Station Sync:** stumbles land where the local radio day matches your pick.
+- **Restart pick-up:** Space resumes the station you were last listening to.
 
 [Stumble, Teleport and shuffle modes →](docs/discovery.md)
 

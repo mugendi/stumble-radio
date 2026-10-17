@@ -426,6 +426,8 @@ class HelpScreen(ModalScreen):
                 "Click a table header to sort; click again to reverse.\n"
                 "Unheard excludes every station in your listening history.\n"
                 "Stumble recovers from failed, stalled or silent streams.\n"
+                "Station Sync stumbles land where the local radio day matches.\n"
+                "Space on launch resumes the station you last heard.\n"
                 "Fast skips cool a station for 24h; dwell time boosts it.\n"
                 "City search matches the directory's state / region field.\n"
                 "For precise locations, use coordinates and a radius.\n\n"
