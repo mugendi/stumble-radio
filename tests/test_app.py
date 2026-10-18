@@ -1193,3 +1193,12 @@ async def test_space_without_last_played_keeps_selection(db, station, tmp_path):
         await pilot.press("space")
         await pilot.pause()
         assert app.current and app.current.stationuuid == station.stationuuid
+
+
+async def test_logo_shows_version(db, station, tmp_path):
+    from stumble_radio import __version__
+
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)):
+        logo = app.query_one("#logo", Static)
+        assert str(logo.render()) == f"STUMBLE ◎ RADIO · v{__version__}"

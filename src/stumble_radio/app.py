@@ -18,6 +18,7 @@ from textual.events import Click
 from textual.message import Message
 from textual.widgets import Button, DataTable, Footer, Input, Select, Static
 
+from . import __version__
 from .announcements import AnnouncementPlayer, AudioLibrary
 from .api import DirectoryError, RadioBrowser, sync_catalogue
 from .db import PAGE_SIZE, Database
@@ -269,7 +270,9 @@ class StumbleRadio(App):
     def compose(self) -> ComposeResult:
         with Horizontal(id="masthead"):
             with Vertical(id="masthead-brand"):
-                yield Static("STUMBLE ◎ RADIO", id="logo", markup=False)
+                yield Static(
+                    f"STUMBLE ◎ RADIO · v{__version__}", id="logo", markup=False
+                )
                 yield Static("terminal radio for curious minds", id="tagline", markup=False)
             yield Static("◎ Earth", id="destination-line", markup=False)
         with Horizontal(id="transport"):
