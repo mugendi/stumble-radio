@@ -19,6 +19,7 @@ from stumble_radio.screens import (
     LastPlayScreen,
     SearchScreen,
     SleepScreen,
+    StationNotesScreen,
     StationPicker,
 )
 from stumble_radio.tracks import Track
@@ -1234,6 +1235,111 @@ async def test_space_without_last_played_keeps_selection(db, station, tmp_path):
         await pilot.press("space")
         await pilot.pause()
         assert app.current and app.current.stationuuid == station.stationuuid
+
+
+async def test_now_playing_left_click_reveals_row(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        tuned = app.stations.index(station)
+        other = next(row for row in range(app.query_one(DataTable).row_count) if row != tuned)
+        app.query_one(DataTable).move_cursor(row=other)
+        await pilot.pause()
+        await pilot.click("#playing-station")
+        await pilot.pause()
+        assert app.selected_station().stationuuid == station.stationuuid
+        assert f"STATION: {station.name}" in str(app.query_one("#detail", Static).render())
+
+
+async def test_now_playing_left_click_outside_page_shows_info(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        other = next(s for s in app.stations if s.stationuuid != station.stationuuid)
+        table = app.query_one(DataTable)
+        table.move_cursor(row=app.stations.index(other))
+        await pilot.pause()
+        detail = str(app.query_one("#detail", Static).render())
+        assert f"STATION: {other.name}" in detail
+        app.stations = [other]
+        await pilot.pause()
+        cursor = table.cursor_row
+        await pilot.click("#playing-station")
+        await pilot.pause()
+        detail = str(app.query_one("#detail", Static).render())
+        assert app.query_one(DataTable).cursor_row == cursor
+        detail = str(app.query_one("#detail", Static).render())
+        assert f"STATION: {station.name}" in detail
+        assert "▶ NOW PLAYING" in detail
+
+
+async def test_now_playing_double_click_pauses_and_resumes(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        await pilot.double_click("#playing-station")
+        await pilot.pause()
+        assert app.user_paused
+        assert app.play_state == "PAUSED"
+        await pilot.double_click("#playing-station")
+        await pilot.pause()
+        assert not app.user_paused
+
+
+async def test_now_playing_right_click_opens_notes(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        await pilot.click("#playing-station", button=3)
+        await pilot.pause()
+        assert isinstance(app.screen, StationNotesScreen)
+        assert app.screen.station.stationuuid == station.stationuuid
+
+
+async def test_last_chip_clicks_follow_resume_station(db, station, tmp_path):
+    db.set_metadata("last_played", station.stationuuid)
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        assert app.resume_station and app.resume_station.stationuuid == station.stationuuid
+        await pilot.click("#playing-station")
+        await pilot.pause()
+        assert app.selected_station().stationuuid == station.stationuuid
+        await pilot.double_click("#playing-station")
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        assert app.current.stationuuid == station.stationuuid
+        assert app.resume_station is None
+        await pilot.click("#playing-station", button=3)
+        await pilot.pause()
+        assert isinstance(app.screen, StationNotesScreen)
 
 
 async def test_logo_shows_version(db, station, tmp_path):
