@@ -878,8 +878,11 @@ class StumbleRadio(App):
             return self.current
         return None
 
-    def update_details(self) -> None:
-        if station := self.selected_station():
+    def update_details(self, station: Station | None = None) -> None:
+        highlighted = self.selected_station()
+        if station is None or (highlighted is not None and highlighted.stationuuid == station.stationuuid):
+            station = highlighted
+        if station:
             seconds = self.db.listen_seconds_for(station)
             notes = self.db.station_notes(station)
             lines = [f"STATION: {station.name}"]
@@ -909,10 +912,11 @@ class StumbleRadio(App):
 
     def update_pinned_station(self) -> None:
         pinned = self.query_one("#playing-station", Static)
+        hint = "\nclick: reveal in list · double-click: pause/resume · right-click: notes"
         if self.current:
             country = f" · {self.current.country}" if self.current.country else ""
             text = f"▶ NOW PLAYING · {self.current.name}{country}"
-            pinned.tooltip = text
+            pinned.tooltip = text + hint
             if self.size.width < 70:
                 text = f"▶ {self.current.name}"
             pinned.update(text)
@@ -922,8 +926,9 @@ class StumbleRadio(App):
                 country = (
                     f" · {self.resume_station.country}" if self.resume_station.country else ""
                 )
-                pinned.update(f"▶ LAST · {self.resume_station.name}{country} · Space resumes")
-                pinned.tooltip = str(pinned.render())
+                chip = f"▶ LAST · {self.resume_station.name}{country} · Space resumes"
+                pinned.update(chip)
+                pinned.tooltip = chip + hint
                 pinned.display = True
             else:
                 pinned.update("")
@@ -936,6 +941,32 @@ class StumbleRadio(App):
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id == "stations" and (station := self.selected_station()):
             self.manual_tune(station)
+
+    async def on_click(self, event: Click) -> None:
+        if event.widget.id != "playing-station":
+            return
+        if not (station := self.current or self.resume_station):
+            return
+        if event.button == 3:
+            self.open_station_notes(station)
+            return
+        if event.button != 1:
+            return
+        if event.chain >= 2:
+            await self.run_action("pause")
+            return
+        index = next(
+            (
+                row
+                for row, item in enumerate(self.stations)
+                if item.stationuuid == station.stationuuid
+            ),
+            None,
+        )
+        if index is None:
+            self.update_details(station)
+            return
+        self.query_one(DataTable).move_cursor(row=index)
 
     def on_station_table_notes_requested(self, event: StationTable.NotesRequested):
         station = next((s for s in self.stations if s.stationuuid == event.stationuuid), None)
