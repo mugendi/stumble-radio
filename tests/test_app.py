@@ -983,6 +983,47 @@ async def test_updates_stale_cache_triggers_fetch_and_persists(db, station, monk
         assert saved["latest"] == "0.1.4"
 
 
+@pytest.mark.parametrize("latest", ["1.0.6", "1.0.5", None])
+async def test_manual_update_refreshes_fresh_cache(db, tmp_path, monkeypatch, latest):
+    import stumble_radio.app as app_module
+
+    cached = {"checked": time.time(), "latest": "1.0.5"}
+    db.set_metadata("update_check", json.dumps(cached))
+    monkeypatch.setattr(app_module, "installed_version", lambda: "1.0.5")
+    fetched = []
+
+    def fetch():
+        fetched.append(True)
+        return latest
+
+    monkeypatch.setattr(app_module, "fetch_latest_version", fetch)
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    confirmations, notices = [], []
+
+    async def confirm(screen):
+        confirmations.append(screen)
+        return False
+
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        monkeypatch.setattr(app, "push_screen_wait", confirm)
+        monkeypatch.setattr(app, "notify", lambda message, **kwargs: notices.append(message))
+        app.offline = False
+        await app.action_update().wait()
+        assert fetched == [True]
+        assert len(confirmations) == (1 if latest == "1.0.6" else 0)
+        saved = json.loads(db.metadata("update_check"))
+        if latest is None:
+            assert saved == cached
+            assert any("Could not check for updates" in notice for notice in notices)
+            assert "No update available." not in notices
+        else:
+            assert saved["latest"] == latest
+            assert saved["checked"] >= cached["checked"]
+            if latest == "1.0.5":
+                assert "No update available." in notices
+
+
 async def test_update_flow_confirms_upgrades_and_hands_off(db, station, tmp_path, monkeypatch):
     import stumble_radio.updates as updates_module
 

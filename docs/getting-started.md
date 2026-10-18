@@ -77,8 +77,9 @@ continue while you pause listening.
 
 Stumble Radio checks GitHub for a newer release when it starts and caches the
 answer for a day, so at most one small request is made per launch. When a
-newer version exists, a toast tells you and the app remembers it: press `U`
-(uppercase; lowercase `u` refreshes online filters), confirm, and the app
+newer version exists, a toast tells you and the app remembers it. Press `U`
+(uppercase; lowercase `u` refreshes online filters) to check again immediately
+when online, bypassing the daily cache. Confirm the update, and the app
 stops cleanly (without cutting a recording or losing your Podmoro timer),
 runs `uv tool install --upgrade` with the same source it was installed from,
 then relaunches itself with the new version. A failed update leaves the app

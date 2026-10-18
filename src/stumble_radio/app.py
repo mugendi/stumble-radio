@@ -608,6 +608,21 @@ class StumbleRadio(App):
 
     @work(group="updates", exclusive=True)
     async def action_update(self) -> None:
+        if not self.offline:
+            latest = await asyncio.to_thread(fetch_latest_version)
+            if latest is None:
+                self.notify(
+                    "Could not check for updates — check your network and try U again.",
+                    severity="warning",
+                )
+                return
+            self.update_checked_at = time.time()
+            await asyncio.to_thread(
+                self.db.set_metadata,
+                UPDATE_CACHE_KEY,
+                json.dumps({"checked": self.update_checked_at, "latest": latest}),
+            )
+            self.update_available = latest if is_newer(latest, installed_version()) else None
         if not self.update_available:
             latest = str((self.update_cache() or {}).get("latest") or "")
             if latest and is_newer(latest, installed_version()):
