@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stumble-radio"
-version = "0.1.7"
+version = "0.1.8"
 description = "A terminal radio for curious ears. Stumble into something good."
 readme = "README.md"
 requires-python = ">=3.11"
