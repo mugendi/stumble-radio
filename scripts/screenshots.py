@@ -309,7 +309,7 @@ async def main_captures(app, pilot) -> None:
     by_name = {s.name: s for s in app.stations}
 
     # --- player.png: main screen, Kameme FM playing, cursor on row 0.
-    lately(app, app.stations[0])
+    lately(app, by_name["Kameme FM"])
     await app.refresh_library()
     tune_cursor(app, "Kameme FM")
     await pilot.pause()
