@@ -3,6 +3,15 @@ import pytest
 from stumble_radio import cli
 
 
+def test_version_flag_uses_package_version(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "__version__", "9.2.1")
+    monkeypatch.setattr(cli.sys, "argv", ["stumble-radio", "--version"])
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.strip() == "Stumble Radio 9.2.1"
+
+
 def test_relaunch_execs_new_binary(monkeypatch):
     seen = []
 
