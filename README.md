@@ -17,6 +17,28 @@ radio stations, stumble into something new, and keep your favourites close.
 Built with Python and SQLite, with a local station catalogue for fast search.
 Use the keyboard or mouse; the layout adapts to smaller terminals.
 
+## Install
+
+Install Stumble Radio and its audio dependencies with one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
+```
+This simple installer checks that your system has all the needed tools installed such as  `curl`, `tar`, `mpv`, FFmpeg, and `uv`, and explains why each is needed. It does not need root access nor does it install these tools for you.
+
+When done,  run `stumble-radio` in a terminal.
+
+Windows users need WSL with working audio. See the
+[getting started guide](docs/getting-started.md) for requirements and manual
+installation methods.
+
+Press **s** to Stumble, **t** to Teleport,
+**Ctrl+F** to search, **Ctrl+O** for Podmoro, and **?** for help.
+
+[Installation, audio dependencies and first launch](docs/getting-started.md) ·
+[Troubleshooting](docs/troubleshooting.md) ·
+[Development](docs/development.md)
+
 ## Why
 
 I enjoy music as I work. I actually find it hard to work in absolute silence.
@@ -115,27 +137,6 @@ Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro s
 
 [Podmoro, scheduling and step-by-step sound setup →](docs/podmoro.md)
 
-## Install
-
-Install Stumble Radio and its audio dependencies with one command:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mugendi/stumble-radio/master/install.sh | sh
-```
-This simple installer checks that your system has all the needed tools installed such as  `curl`, `tar`, `mpv`, FFmpeg, and `uv`, and explains why each is needed. It does not need root access nor does it install these tools for you.
-
-When done,  run `stumble-radio` in a terminal.
-
-Windows users need WSL with working audio. See the
-[getting started guide](docs/getting-started.md) for requirements and manual
-installation methods.
-
-Press **s** to Stumble, **t** to Teleport,
-**Ctrl+F** to search, **Ctrl+O** for Podmoro, and **?** for help.
-
-[Installation, audio dependencies and first launch](docs/getting-started.md) ·
-[Troubleshooting](docs/troubleshooting.md) ·
-[Development](docs/development.md)
 
 ## Contributing
 
