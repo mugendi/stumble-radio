@@ -16,7 +16,9 @@ it.
   public directory with failed checks hidden), Favourites, History, or Unheard.
   Each page holds up to 100 rows and "[" / "]" turns pages.
 - What you hear stays pinned above all rows with a play marker, starred if it
-  is a favourite, so a long list never buries it.
+  is a favourite, so a long list never buries it. The pin is clickable: click
+  to jump the table to that station, double-click to pause or resume, and
+  right-click for its notes.
 - Press "f" to favourite the playing channel. If nothing is playing, it acts
   on the highlighted row, but asks first. Favourites rank first in every result
   set until you sort another way.
@@ -156,7 +158,8 @@ Manual: [Reconnection, internet outages, and dead streams](playback.md#reconnect
   running recording, upgrades with the same installer it came from, and opens
   the new version.
 - The station you last heard shows as "▶ LAST · name · Space resumes" at
-  launch, and "Space" picks it up again.
+  launch, and "Space" picks it up again. The same clicks work on that line:
+  click to find it in the table, double-click to resume, right-click for notes.
 - The help screen ("?" or the button) maps every key and note worth knowing.
 - Narrow terminals are handled: the layout folds, and the sidebar and
   destination line give way step by step.

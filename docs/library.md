@@ -25,6 +25,11 @@ that row so you can press **f** to favourite a station found by Stumble or
 Teleport. The pin can sit outside the active search and is excluded from result
 counts and page sorting.
 
+The pin itself is clickable. Clicking it jumps the table to that station,
+double-clicking pauses or resumes playback, and right-clicking opens its notes.
+If the station is not on the current page, the click leaves the table alone and
+shows its details in the sidebar instead.
+
 Use the sidebar dropdown or the **Library** button to choose:
 
 | Library | What it shows |
