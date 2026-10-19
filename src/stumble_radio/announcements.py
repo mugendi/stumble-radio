@@ -33,7 +33,9 @@ class AudioLibrary:
         return sorted(
             p
             for p in folder.iterdir()
-            if p.is_file() and p.suffix.lower() == ".mp3" and p.resolve().is_relative_to(self.root)
+            if p.is_file()
+            and p.suffix.lower() in {".mp3", ".wav"}
+            and p.resolve().is_relative_to(self.root)
         )
 
     def categories(self) -> list[str]:
