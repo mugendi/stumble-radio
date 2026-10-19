@@ -171,7 +171,10 @@ class PomodoroScreen(ModalScreen):
                     yield Input(str(self.timer.voice_volume), id="pomo-voice-volume")
                     yield Button("Save audio settings", variant="primary", id="pomo-audio-save")
                     yield Static(
-                        "Put your MP3s in command folders below. Optional matching .txt files supply captions. Each announcement is limited to 120 seconds.",
+                        "MP3 or WAV clips in command folders; a matching .txt file supplies"
+                        " the caption. Empty folders are generated from the announcer voice"
+                        " (Palette > Voices); deleting clips and restarting remakes them."
+                        " All announcements cap at 120 seconds.",
                         classes="muted",
                     )
                     yield DataTable(id="pomo-clips-table", cursor_type="row", zebra_stripes=True)
@@ -200,7 +203,7 @@ class PomodoroScreen(ModalScreen):
         self.query_one("#pomo-reminders", DataTable).add_columns(
             "Command", "Minutes", "During", "On"
         )
-        self.query_one("#pomo-clips-table", DataTable).add_columns("Command folder", "MP3 clips")
+        self.query_one("#pomo-clips-table", DataTable).add_columns("Command folder", "Clips")
         self.load_profile(next(iter(self.timer.profiles)))
         self.schedule_fields()
         try:

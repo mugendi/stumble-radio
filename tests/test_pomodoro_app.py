@@ -4,11 +4,13 @@ import time
 
 import pytest
 from test_app import FakePlayer, OfflineAPI
+from test_voice import FakeEngine
 from textual.containers import VerticalScroll
 from textual.pilot import Pilot
 from textual.widgets import Button, DataTable, Input, TabbedContent
 
-from stumble_radio.app import StumbleRadio
+import stumble_radio.voice as voice_module
+from stumble_radio.app import StumbleRadio, VoicesCommand
 from stumble_radio.pomodoro import Announcement, Reminder
 from stumble_radio.pomodoro_screen import PomodoroScreen
 
@@ -90,7 +92,7 @@ async def test_voice_mute_preserves_stream_recording_user_volume_and_metadata(
         await pilot.pause(0.35)
         assert db.search_tracks()[1] == 0 and app.volume_value == 70
         app.announcer.release.set()
-        await pilot.pause(0.4)
+        await pilot.pause(0.8)
         assert not app.announcement_muted and player.volumes[-1] == 70
         assert db.search_tracks("Band")[1] == 1
         assert player.record_process is recording
@@ -288,3 +290,92 @@ async def test_reopen_profiles_with_reminders_and_close_pending_preview(db, tmp_
         release.set()
         await pilot.pause()
         assert not app.announcer.calls and not app.announcement_muted
+
+
+def patch_tts(monkeypatch, ready: bool):
+    monkeypatch.setattr(voice_module, "engine", lambda: FakeEngine)
+    loaded = {"alan": FakeEngine()} if ready else {}
+    monkeypatch.setattr(voice_module, "_loaded", loaded)
+    monkeypatch.setattr(
+        voice_module.Announcer, "_download", staticmethod(lambda url, dest: dest.write_bytes(b"w"))
+    )
+    return voice_module
+
+
+async def test_tts_startup_fills_only_empty_command_folders(db, station, tmp_path, monkeypatch):
+    patch_tts(monkeypatch, ready=False)
+    app, _player = app_with_voices(db, tmp_path)
+    async with app.run_test(size=(110, 40)) as pilot:
+        await pilot.pause()
+        await app.work_voice().wait()
+        await pilot.pause()
+        assert [c.name for c in app.voice_library.clips("focus-start")] == ["voice.mp3"]
+        for command in ("long-break-start", "break-ending", "reminders/water"):
+            generated = app.voice_library.clips(command)
+            assert len(generated) == 2 and all(c.suffix == ".wav" for c in generated)
+        assert all(
+            not c.name.startswith("tts-") for c in app.voice_library.clips("reminders/stretch")
+        )
+        onnx = sorted(p.name for p in (tmp_path / "piper").glob("en_GB*"))
+        assert onnx == ["en_GB-alan-medium.onnx", "en_GB-alan-medium.onnx.json"]
+
+
+async def test_announce_falls_back_to_generated_clip(db, station, tmp_path, monkeypatch):
+    patch_tts(monkeypatch, ready=True)
+    app, _player = app_with_voices(db, tmp_path)
+    async with app.run_test(size=(110, 40)) as pilot:
+        await pilot.pause()
+        app.dispatch_announcement(Announcement("reminders/eyes", "Rest your eyes"))
+        await asyncio.wait_for(app.announcer.started.wait(), timeout=3)
+        clip = app.announcer.calls[0][0]
+        assert clip.name.startswith("tts-") and clip.suffix == ".wav"
+        assert clip.with_suffix(".txt").read_text(encoding="utf-8") == "Rest your eyes"
+        assert len(app.voice_library.clips("reminders/eyes")) == 1
+        app.announcer.release.set()
+        await pilot.pause(0.4)
+        assert not app.announcement_muted and app.announcement_gain == 1.0
+
+
+async def test_announcement_fade_ramps_station_volume(db, station, tmp_path, monkeypatch):
+    patch_tts(monkeypatch, ready=False)
+    app, player = app_with_voices(db, tmp_path)
+    async with app.run_test(size=(110, 40)) as pilot:
+        app.manual_tune(station)
+        await pilot.pause()
+        baseline = len(player.volumes)
+        app.dispatch_announcement(Announcement("focus-start", "Time to focus"))
+        await asyncio.wait_for(app.announcer.started.wait(), timeout=2)
+        assert len(player.volumes) - baseline >= 3
+        assert player.volumes[-3:] == pytest.approx([42.9, 21.45, 0], abs=0.6)
+        assert app.announcement_muted and app.announcement_gain == 0.0
+        app.announcer.release.set()
+        await pilot.pause(0.5)
+        assert player.volumes[-1] == 65 and app.announcement_gain == 1.0
+
+
+async def test_palette_switches_announcer_and_persists(db, tmp_path, monkeypatch):
+    patch_tts(monkeypatch, ready=True)
+    app, _player = app_with_voices(db, tmp_path)
+    async with app.run_test(size=(110, 40)):
+        provider = VoicesCommand(app.screen)
+        hits = [hit async for hit in provider.search("jenny")]
+        assert [str(hit.text) for hit in hits] == ["Voices: announcer is Jenny"]
+        await app.switch_announcer("jenny").wait()
+        assert app.voice_settings.person == "jenny"
+        assert json.loads(db.metadata("announcer_v1")) == {"version": 1, "person": "jenny"}
+        fresh = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+        async with fresh.run_test(size=(110, 40)) as fresh_pilot:
+            await fresh_pilot.pause()
+            assert fresh.voice_settings.person == "jenny"
+
+
+async def test_tts_without_engine_returns_silently(db, station, tmp_path, monkeypatch):
+    monkeypatch.setattr(voice_module, "engine", lambda: None)
+    monkeypatch.setattr(voice_module, "_loaded", {})
+    app, _player = app_with_voices(db, tmp_path)
+    async with app.run_test(size=(110, 40)) as pilot:
+        await pilot.pause()
+        app.dispatch_announcement(Announcement("reminders/eyes", "Rest your eyes"))
+        await pilot.pause()
+        assert not app.announcer.calls and not app.announcement_muted
+        assert app.voice_library.clips("reminders/eyes") == []

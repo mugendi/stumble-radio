@@ -11,8 +11,9 @@ from typing import ClassVar
 from rich.cells import cell_len
 from rich.text import Text
 from textual import work
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, get_system_commands_provider
 from textual.binding import Binding
+from textual.command import DiscoveryHit, Hits, Provider
 from textual.containers import Horizontal, HorizontalGroup, Vertical
 from textual.events import Click
 from textual.message import Message
@@ -28,7 +29,7 @@ from .equalizer_screen import EqualizerScreen
 from .models import SORTS, Search, Station, clean
 from .network import NETWORK_POLL_SECONDS, internet_available, retry_delay
 from .player import Player, PlayerError
-from .pomodoro import PHASES, Announcement, Pomodoro, finite
+from .pomodoro import COMMANDS, PHASES, Announcement, Pomodoro, finite
 from .pomodoro_screen import PomodoroScreen
 from .query import format_expression, format_query, parse_query
 from .screens import (
@@ -50,6 +51,7 @@ from .updates import (
     run_upgrade,
     uv_command,
 )
+from .voice import VOICES, Announcer, VoiceError, VoiceSettings
 from .world_times import daypart_label, local_hour, local_time, zone_for_daypart
 
 
@@ -132,7 +134,22 @@ class StationTable(DataTable):
             self.post_message(self.NotesRequested(self.ordered_rows[row].key.value))
 
 
+class VoicesCommand(Provider):
+    """Command palette entries for switching the announcer voice."""
+
+    async def search(self, query: str) -> Hits:
+        app = self.app
+        for person in VOICES:
+            display = f"Voices: announcer is {person.title()}"
+            if self.matcher(query).match(display):
+                yield DiscoveryHit(
+                    display,
+                    lambda target=person, main=app: main.switch_announcer(target),
+                )
+
+
 class StumbleRadio(App):
+    COMMANDS: ClassVar = {get_system_commands_provider, VoicesCommand}
     TITLE = "Stumble Radio"
     CSS_PATH = "app.tcss"
     TABLE_COLUMNS: ClassVar = (
@@ -251,10 +268,13 @@ class StumbleRadio(App):
         self.pomodoro = Pomodoro()
         self.voice_library = AudioLibrary(db.path.parent / "pomodoro" / "audio" / "commands")
         self.announcer = AnnouncementPlayer()
+        self.tts = Announcer(db.path.parent / "piper")
+        self.voice_settings = VoiceSettings()
         self.announcement_lock = asyncio.Lock()
         self.pomodoro_save_lock = asyncio.Lock()
         self.announcement_muted = False
         self.announcement_preview = False
+        self.announcement_gain = 1.0
         self.preview_requested = False
         self.last_announcement = None
         self.sleep_gain = 1.0
@@ -398,6 +418,14 @@ class StumbleRadio(App):
                     "Podmoro settings were invalid; a recovery copy was kept. Using defaults.",
                     severity="warning",
                 )
+        saved_announcer = await asyncio.to_thread(self.db.metadata, "announcer_v1")
+        if saved_announcer:
+            try:
+                self.voice_settings = VoiceSettings.restore(json.loads(saved_announcer))
+            except (ValueError, TypeError):
+                self.notify("Announcer settings were invalid; using Alan.", severity="warning")
+        if not self.offline:
+            self.work_voice()
         self.pomodoro.tick(time.monotonic(), datetime.now().astimezone())
         self.update_pomodoro_line()
         self.set_interval(1, self.tick)
@@ -1228,6 +1256,51 @@ class StumbleRadio(App):
         self.preview_requested = True
         self.announce(Announcement(command, Pomodoro.command_label(command)), preview=True)
 
+    @work(group="voice", exclusive=True)
+    async def work_voice(self):
+        if not self.tts.has_engine():
+            return
+        try:
+            await asyncio.to_thread(self.tts.ensure_voice, self.voice_settings.person)
+        except VoiceError as error:
+            self.notify(clean(str(error)), severity="warning")
+            return
+        for command in sorted(set(self.voice_library.categories()) | set(COMMANDS)):
+            if self.voice_library.clips(command):
+                continue
+            await self.generate_command_clips(command)
+
+    async def generate_command_clips(self, command: str):
+        folder = self.voice_library.folder(command)
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            self.notify(clean(str(error)), severity="warning")
+            return
+        for text in self.tts.phrase_variants(command):
+            try:
+                await asyncio.to_thread(
+                    self.tts.speak, text, self.voice_settings.person, folder
+                )
+            except VoiceError as error:
+                self.notify(clean(str(error)), severity="warning", markup=False)
+                break
+
+    @work(group="announcer-person", exclusive=True)
+    async def switch_announcer(self, person: str):
+        if person not in VOICES:
+            return
+        self.voice_settings.person = person
+        await asyncio.to_thread(
+            self.db.set_metadata, "announcer_v1", json.dumps(self.voice_settings.snapshot())
+        )
+        if not self.offline:
+            try:
+                await asyncio.to_thread(self.tts.ensure_voice, person)
+            except VoiceError as error:
+                self.notify(clean(str(error)), severity="warning")
+        self.notify(f"Announcements will use {person.title()}.")
+
     @work(exclusive=True, group="announcements")
     async def announce(self, announcement: Announcement, *, preview: bool = False):
         async with self.announcement_lock:
@@ -1239,8 +1312,10 @@ class StumbleRadio(App):
             try:
                 clip = await asyncio.to_thread(self.voice_library.choose, announcement.category)
                 if not clip:
+                    clip = await self.generate_on_demand(announcement.category, announcement.text)
+                if not clip:
                     if preview:
-                        self.notify("No MP3s in this command folder. Add clips and preview again.")
+                        self.notify("No clips in this command folder. Add one and preview again.")
                     return
                 caption = await asyncio.to_thread(
                     self.voice_library.caption, clip, announcement.text
@@ -1256,17 +1331,37 @@ class StumbleRadio(App):
                     return
                 self.account_listening()
                 self.announcement_preview = preview
+                await self.fade_announcement(down=True)
                 self.announcement_muted = True
-                await self.apply_volume()
                 await self.announcer.play(clip, self.pomodoro.voice_volume)
             except (OSError, ValueError, PlayerError) as error:
                 self.notify(clean(str(error)), severity="warning", markup=False)
             finally:
                 self.account_listening()
                 self.announcement_muted = self.announcement_preview = False
+                await self.fade_announcement(down=False)
                 await self.apply_volume()
                 if self.is_running:
                     self.save_current_track()
+
+    async def fade_announcement(self, down: bool):
+        ramp = (1.0, 0.66, 0.33, 0.0) if down else (0.0, 0.34, 0.67, 1.0)
+        for gain in ramp:
+            self.announcement_gain = gain
+            await self.apply_volume()
+            await asyncio.sleep(0.08)
+
+    async def generate_on_demand(self, command: str, text: str) -> Path | None:
+        if not (self.tts.has_engine() and self.tts.ready(self.voice_settings.person)):
+            return None
+        folder = self.voice_library.folder(command)
+        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            return await asyncio.to_thread(
+                self.tts.speak, text, self.voice_settings.person, folder
+            )
+        except VoiceError:
+            return None
 
     async def dismiss_voice(self):
         self.preview_requested = False
@@ -1275,10 +1370,11 @@ class StumbleRadio(App):
         async with self.announcement_lock:
             self.account_listening()
             self.announcement_muted = self.announcement_preview = False
+            self.announcement_gain = 1.0
             await self.apply_volume()
 
     async def apply_volume(self):
-        effective = self.volume_value * self.sleep_gain
+        effective = self.volume_value * self.sleep_gain * self.announcement_gain
         if self.announcement_muted or self.user_paused:
             effective = 0
         try:
