@@ -18,8 +18,9 @@ use two rows so PODMORO remains reachable at the right of the second row.
 
 The scheduler is **off initially**. The included Classic profile uses 25 minutes
 of focus, a 5-minute short break, and a 15-minute long break after four completed
-focus blocks. It repeats until stopped. There are no bundled recordings: without
-your MP3s, reminders appear visually and the timer still works.
+focus blocks. It repeats until stopped. No audio ships with the app: without
+clips, reminders appear visually and the timer still works — or let the
+[built-in announcer](voice.md) generate them.
 
 ## Sessions and profiles
 
@@ -127,12 +128,13 @@ On macOS the default starts at
 shows the selected path; `stumble-radio --doctor` prints the default path for the
 chosen data directory.
 
-### 2. Prepare short MP3s
+### 2. Bring your own clips — or generate them
 
-Record your own prompts or export MP3s from your preferred voice-generation tool.
-The app does not generate speech, download clips, or require a speech-service
-account. `.mp3` and `.MP3` extensions are accepted. Use generic wording when the
-same folder will serve profiles with different durations.
+Record your own prompts, export MP3s from your preferred voice tool, or let the
+[built-in announcer](voice.md) fill empty folders with Piper-generated WAVs.
+`.mp3`, `.MP3` and `.wav` extensions are accepted, and generated clips come with
+matching `.txt` captions. Use generic wording when the same folder will serve
+profiles with different durations.
 
 | Folder | When it is used | Example wording for your recording |
 | --- | --- | --- |
@@ -154,6 +156,8 @@ an MP3 alone does not schedule it. There are no bundled exercise instructions.
 
 Drag and drop files using your file manager, or adapt this shell example. Replace
 the first line with the path shown in **Voice clips**; the MP3s must already exist.
+Any clip already in a folder — yours or a generated one — disables announcer
+generation for that folder.
 
 ```bash
 VOICE_LIBRARY='/path/shown/in/Voice clips'

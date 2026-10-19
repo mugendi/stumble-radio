@@ -121,14 +121,16 @@ Manual: [Playback: equalizer, levels and sleep](playback.md#equalizer-and-gain)
     long-break rhythm.
   - Weekly schedules: auto-start a profile, for example weekday mornings
     09:00.
-  - Voice reminders: your own short MP3s in command folders (water, stretch,
-    eye-break, break endings, custom prompts) with captions and previews.
+  - Voice reminders: your own short MP3/WAVs in command folders (water, stretch,
+    eye-break, break endings, custom prompts) with captions and previews — or
+    let the built-in announcer fill empty folders. Two voices (Alan, Jenny),
+    switchable from Ctrl+P → "Voices".
   - Pause, skip, extend, snooze or silence any prompt without losing your
     place. Daily focus totals are tracked.
 
 ![Podmoro session with focus countdown and a reminder playing](images/podmoro-session.png)
 
-Manual: [Podmoro, scheduling and step-by-step sound setup](podmoro.md)
+Manual: [Podmoro, scheduling and step-by-step sound setup](podmoro.md), [Voice announcements](voice.md)
 
 ## Recording
 

@@ -131,7 +131,7 @@ Wait, I can explain. And I believe it makes sense too.
 Okay, now this is important; for your health. Stumble Radio bakes in a Podmoro scheduler so you can receive periodic musc interruptions reminding you to hug your cat. Even better is that you get to record and customize your reminders yourself, in your own voice or have your loved one'd voice remind you. You will likely heed to that voice more.
 
 - **PODMORO:** custom focus/break profiles, weekly schedules and daily focus totals.
-- Interrupt the music with your own MP3 voice prompts for breaks or reminders.
+- Interrupt the music with your own MP3 voice prompts — or let the built-in announcer (Alan or Jenny, generated locally with Piper) fill empty folders for you.
 - Add water, stretch, eye-break or custom command folders; preview clips and captions.
 - Pause, skip, extend, snooze or silence reminders without losing your place.
 

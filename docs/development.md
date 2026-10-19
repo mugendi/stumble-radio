@@ -39,6 +39,7 @@ src/stumble_radio/
   pomodoro.py  Focus/break clocks, reminders, weekly rules and checkpoints
   pomodoro_screen.py  Session, profile, schedule and voice-library editors
   announcements.py   Local MP3 discovery and independent bounded voice playback
+  voice.py   Piper TTS: voice download, cached engine, WAV phrase rendering
   tracks.py    Broadcaster artist/title and ICY track metadata parsing
   world_times.py   Representative country timezones, radio-daypart windows
   updates.py   Release check, version comparison and upgrade hand-off
