@@ -353,6 +353,29 @@ async def test_announcement_fade_ramps_station_volume(db, station, tmp_path, mon
         assert player.volumes[-1] == 65 and app.announcement_gain == 1.0
 
 
+async def test_announcements_repeat_across_focus_and_breaks(db, station, tmp_path):
+    app, player = app_with_voices(db, tmp_path)
+    async with app.run_test() as pilot:
+        app.manual_tune(station)
+        await pilot.pause()
+        await app.pomodoro_control("start")
+        commands = ("focus-start", "short-break-start", "focus-start", "short-break-start")
+        for index, command in enumerate(commands):
+            if index:
+                app.pomodoro.session["remaining"] = 0
+                await app.tick()
+            await asyncio.wait_for(app.announcer.started.wait(), timeout=2)
+            assert app.announcer.calls[-1][0].parent.name == command
+            assert app.announcement_muted and player.volumes[-1] == 0
+            app.announcer.release.set()
+            await app.workers.wait_for_complete(
+                [worker for worker in app.workers if worker.group == "announcements"]
+            )
+            app.announcer.started.clear()
+            assert not app.announcement_muted and player.volumes[-1] == 65
+        assert len(app.announcer.calls) == 4
+
+
 async def test_palette_switches_announcer_and_persists(db, tmp_path, monkeypatch):
     patch_tts(monkeypatch, ready=True)
     app, _player = app_with_voices(db, tmp_path)
