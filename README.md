@@ -6,7 +6,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/mugendi/stumble-radio?style=flat)](https://github.com/mugendi/stumble-radio/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/mugendi/stumble-radio?style=flat)](https://github.com/mugendi/stumble-radio/issues)
 
-![Stumble Radio terminal player with station browser, favourites and playback controls](docs/images/player.png)
+![Stumble Radio terminal player with station browser, favourites and playback controls](docs/images/demo.gif)
 
 *The actual TUI, shown with demonstration stations and listening data.*
 
