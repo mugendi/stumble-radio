@@ -21,6 +21,54 @@ sample over localhost and validates decoded metering using a null audio output.
 That test needs local socket access and skips when mpv is missing. Real speaker
 output and broadcaster-specific recording still require manual verification.
 
+## Releases
+
+The release script prepares an editable changelog first. Publishing is a separate,
+explicit step. Git must have access to `origin`; publishing also needs the GitHub
+CLI (`gh`) authenticated with permission to create releases.
+
+1. Update the version in `pyproject.toml` and the fallback in
+   `src/stumble_radio/__init__.py`, then commit the changes to release.
+2. Generate and preview the notes:
+
+   ```bash
+   .venv/bin/python scripts/release.py
+   ```
+
+   The script adds a dated version entry to `CHANGELOG.md` using commits since
+   the previous numeric remote version tag. It includes commit descriptions,
+   commit links, and a full comparison link. The first release uses the complete
+   history. Merge commit messages are omitted; their individual commits remain.
+
+   `feat:` becomes **New features**, `fix:` becomes **Bug fixes**, and `docs:`
+   becomes **Documentation**. Build, dependency, test, and other maintenance
+   prefixes share **Dependencies and maintenance**. Unclassified messages appear
+   under **Other changes**. A `!` after the type/scope or a `BREAKING CHANGE:`
+   footer puts the commit under **Breaking changes**.
+3. Edit `CHANGELOG.md` to explain user impact, add upgrade instructions, and
+   remove details that do not help readers. Existing entries are preserved on
+   reruns. To regenerate a draft, remove only that version's entry and rerun.
+   Commit and push the reviewed notes and release changes.
+4. Publish the tag and GitHub release:
+
+   ```bash
+   .venv/bin/python scripts/release.py --publish
+   ```
+
+   Optionally add `--title "Stumble Radio v0.2.0 — Voice announcements"`.
+   Publishing requires a clean working tree and a nonempty changelog entry.
+   The release body is the reviewed entry, excluding its version heading.
+
+If a remote tag already exists, preparation uses that tag's commit, excluding
+later work. Publishing can attach notes to that existing tag without moving it.
+If the tag push succeeds but GitHub release creation fails, fix the reported
+problem and rerun `--publish`. An already published release is left alone.
+Existing GitHub drafts require review and publication on GitHub.
+
+Preparation fetches remote tag objects but does not commit, tag, push, or create
+a GitHub release. Run the release script's offline tests with
+`.venv/bin/python -m pytest -q tests/test_release.py`.
+
 ```text
 src/stumble_radio/
   cli.py       Entry point, storage paths, dependency diagnostics
