@@ -1320,6 +1320,91 @@ async def test_now_playing_right_click_opens_notes(db, station, tmp_path):
         assert app.screen.station.stationuuid == station.stationuuid
 
 
+async def test_now_playing_chip_shows_song_and_country(db, station, tmp_path):
+    player = FakePlayer()
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        pinned = app.query_one("#playing-station", Static)
+
+        def chip():
+            return str(pinned.render())
+
+        # No tags yet: station and country only.
+        assert chip() == "▶ NOW PLAYING · Nairobi Jazz · Kenya"
+
+        async def metadata(value):
+            await player.events.put(
+                {
+                    "event": "property-change",
+                    "name": "metadata",
+                    "data": value,
+                    "stationuuid": station.stationuuid,
+                }
+            )
+            await pilot.pause()
+
+        # ICY raw string splits on dash separators into artist – song.
+        await metadata({"icy-title": "Boyz II Men - End of the Road"})
+        assert chip() == (
+            "▶ NOW PLAYING · Nairobi Jazz · Boyz II Men – End of the Road · Kenya"
+        )
+        # Vorbis/ID3-style tags with real artist and title keys.
+        await metadata({"ARTIST": "Boyz II Men", "TITLE": "End of the Road"})
+        assert chip() == (
+            "▶ NOW PLAYING · Nairobi Jazz · Boyz II Men – End of the Road · Kenya"
+        )
+        # Title-only ICY update keeps the song slot but drops the artist.
+        await metadata({"icy-title": "End of the Road"})
+        assert chip() == "▶ NOW PLAYING · Nairobi Jazz · End of the Road · Kenya"
+        # A title echoing the station name is not a song.
+        await metadata({"icy-title": station.name})
+        assert chip() == "▶ NOW PLAYING · Nairobi Jazz · Kenya"
+
+        # Compact width shows the bare station name regardless of the song.
+        await metadata({"icy-title": "Boyz II Men - End of the Road"})
+        await pilot.resize_terminal(60, 24)
+        await pilot.pause()
+        assert chip() == "▶ Nairobi Jazz"
+
+
+async def test_now_playing_chip_drops_song_after_retune(db, station, tmp_path):
+    player = FakePlayer()
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=player)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        app.manual_tune(station)
+        for _ in range(100):
+            if app.current:
+                break
+            await pilot.pause()
+        assert app.current, "tune never started"
+        pinned = app.query_one("#playing-station", Static)
+        await player.events.put(
+            {
+                "event": "property-change",
+                "name": "metadata",
+                "data": {"artist": "Boyz II Men", "title": "End of the Road"},
+                "stationuuid": station.stationuuid,
+            }
+        )
+        await pilot.pause()
+        assert "Boyz II Men – End of the Road" in str(pinned.render())
+
+        other = next(s for s in app.stations if s.stationuuid != station.stationuuid)
+        app.manual_tune(other)
+        await pilot.pause()
+        assert "Boyz II Men" not in str(pinned.render())
+        assert other.name in str(pinned.render())
+        assert other.country in str(pinned.render())
+
+
 async def test_last_chip_clicks_follow_resume_station(db, station, tmp_path):
     db.set_metadata("last_played", station.stationuuid)
     app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())

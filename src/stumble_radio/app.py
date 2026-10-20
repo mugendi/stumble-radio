@@ -942,8 +942,15 @@ class StumbleRadio(App):
         pinned = self.query_one("#playing-station", Static)
         hint = "\nclick: reveal in list · double-click: pause/resume · right-click: notes"
         if self.current:
+            track = track_from_metadata(self.track_metadata, self.current.name)
+            song = ""
+            if track:
+                song = f"{track.artist} – {track.title}" if track.artist else track.title
             country = f" · {self.current.country}" if self.current.country else ""
-            text = f"▶ NOW PLAYING · {self.current.name}{country}"
+            text = f"▶ NOW PLAYING · {self.current.name}"
+            if song:
+                text += f" · {song}"
+            text += country
             pinned.tooltip = text + hint
             if self.size.width < 70:
                 text = f"▶ {self.current.name}"
@@ -1878,6 +1885,7 @@ class StumbleRadio(App):
                 kind == "property-change"
                 and event.get("name") in {"metadata", "pause", "paused-for-cache"}
             ):
+                self.update_pinned_station()
                 self.save_current_track()
             self.update_now_playing()
 
