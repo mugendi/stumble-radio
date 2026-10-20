@@ -417,7 +417,7 @@ class HelpScreen(ModalScreen):
                 "U         Upgrade Stumble Radio when a newer release is checked at launch\n"
                 "u         Refresh these filters online (Explore only)\n"
                 "[ / ]     Previous / next results page\n"
-                "q         Quit (Ctrl+Q also works in text fields)\n\n"
+                "Ctrl+Q    Quit (works in text fields too)\n\n"
                 "Explore searches your local catalogue immediately.\n"
                 "Search: slow genre:rock country:KE\n"
                 "OR: country|rock|blues country:kenya\n"

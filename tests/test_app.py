@@ -1434,3 +1434,15 @@ async def test_logo_shows_version(db, station, tmp_path):
     async with app.run_test(size=(120, 40)):
         logo = app.query_one("#logo", Static)
         assert str(logo.render()) == f"STUMBLE ◎ RADIO · v{__version__}"
+
+
+async def test_q_key_no_longer_quits(db, station, tmp_path):
+    app = StumbleRadio(db, tmp_path, offline=True, api=OfflineAPI(), player=FakePlayer())
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("q")
+        await pilot.pause()
+        assert app.is_running
+        await pilot.press("ctrl+q")
+        await pilot.pause()
+        assert not app.is_running

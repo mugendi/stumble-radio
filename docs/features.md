@@ -182,7 +182,7 @@ Manual: [Reconnection, internet outages, and dead streams](playback.md#reconnect
 | e, +, − | Equalizer; volume up; volume down |
 | r, Z | Record; sleep timer |
 | u, U, [, ] | Refresh filters online; upgrade app; page back; page forward |
-| ?, q | Help; quit |
+| ?, Ctrl+Q | Help; quit |
 
 The full list lives in the help screen and in
 [playback controls](playback.md#controls).

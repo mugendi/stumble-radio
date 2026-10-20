@@ -188,7 +188,6 @@ class StumbleRadio(App):
         Binding("left_square_bracket", "previous_page", "Page back", show=False),
         Binding("right_square_bracket", "next_page", "Page forward", show=False),
         Binding("question_mark", "help", "Help"),
-        Binding("q", "quit", "Quit"),
         Binding("ctrl+q", "quit", "Quit", show=False, priority=True),
     ]
 

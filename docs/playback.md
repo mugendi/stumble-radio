@@ -46,7 +46,7 @@ station list. `Ctrl+Q` quits even while an input has focus.
 | `[` / `]` | Previous/next page (100 stations per page) |
 | `?` | Show help |
 | `Escape` | Close a dialog |
-| `q` / `Ctrl+Q` | Quit and finalise any recording |
+| `Ctrl+Q` | Quit and finalise any recording |
 
 The transport buttons use **⏮** (previous), **▶** (play/resume), **⏸** (pause), and
 **⏭** (next). The centre button shows the available action and switches as playback
